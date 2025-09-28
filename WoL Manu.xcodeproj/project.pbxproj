@@ -1,0 +1,568 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		32A3DD062E89E33F0099CA2A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 32A3DCF02E89E33D0099CA2A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 32A3DCF72E89E33D0099CA2A;
+			remoteInfo = "WoL Manu";
+		};
+		32A3DD102E89E33F0099CA2A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 32A3DCF02E89E33D0099CA2A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 32A3DCF72E89E33D0099CA2A;
+			remoteInfo = "WoL Manu";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		32A3DCF82E89E33D0099CA2A /* WoL Manu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WoL Manu.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		32A3DD052E89E33F0099CA2A /* WoL ManuTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "WoL ManuTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		32A3DD0F2E89E33F0099CA2A /* WoL ManuUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "WoL ManuUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		32A3DCFA2E89E33D0099CA2A /* WoL Manu */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "WoL Manu";
+			sourceTree = "<group>";
+		};
+		32A3DD082E89E33F0099CA2A /* WoL ManuTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "WoL ManuTests";
+			sourceTree = "<group>";
+		};
+		32A3DD122E89E33F0099CA2A /* WoL ManuUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "WoL ManuUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		32A3DCF52E89E33D0099CA2A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32A3DD022E89E33F0099CA2A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32A3DD0C2E89E33F0099CA2A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		32A3DCEF2E89E33D0099CA2A = {
+			isa = PBXGroup;
+			children = (
+				32A3DCFA2E89E33D0099CA2A /* WoL Manu */,
+				32A3DD082E89E33F0099CA2A /* WoL ManuTests */,
+				32A3DD122E89E33F0099CA2A /* WoL ManuUITests */,
+				32A3DCF92E89E33D0099CA2A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		32A3DCF92E89E33D0099CA2A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				32A3DCF82E89E33D0099CA2A /* WoL Manu.app */,
+				32A3DD052E89E33F0099CA2A /* WoL ManuTests.xctest */,
+				32A3DD0F2E89E33F0099CA2A /* WoL ManuUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		32A3DCF72E89E33D0099CA2A /* WoL Manu */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 32A3DD192E89E33F0099CA2A /* Build configuration list for PBXNativeTarget "WoL Manu" */;
+			buildPhases = (
+				32A3DCF42E89E33D0099CA2A /* Sources */,
+				32A3DCF52E89E33D0099CA2A /* Frameworks */,
+				32A3DCF62E89E33D0099CA2A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				32A3DCFA2E89E33D0099CA2A /* WoL Manu */,
+			);
+			name = "WoL Manu";
+			packageProductDependencies = (
+			);
+			productName = "WoL Manu";
+			productReference = 32A3DCF82E89E33D0099CA2A /* WoL Manu.app */;
+			productType = "com.apple.product-type.application";
+		};
+		32A3DD042E89E33F0099CA2A /* WoL ManuTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 32A3DD1C2E89E33F0099CA2A /* Build configuration list for PBXNativeTarget "WoL ManuTests" */;
+			buildPhases = (
+				32A3DD012E89E33F0099CA2A /* Sources */,
+				32A3DD022E89E33F0099CA2A /* Frameworks */,
+				32A3DD032E89E33F0099CA2A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				32A3DD072E89E33F0099CA2A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				32A3DD082E89E33F0099CA2A /* WoL ManuTests */,
+			);
+			name = "WoL ManuTests";
+			packageProductDependencies = (
+			);
+			productName = "WoL ManuTests";
+			productReference = 32A3DD052E89E33F0099CA2A /* WoL ManuTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		32A3DD0E2E89E33F0099CA2A /* WoL ManuUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 32A3DD1F2E89E33F0099CA2A /* Build configuration list for PBXNativeTarget "WoL ManuUITests" */;
+			buildPhases = (
+				32A3DD0B2E89E33F0099CA2A /* Sources */,
+				32A3DD0C2E89E33F0099CA2A /* Frameworks */,
+				32A3DD0D2E89E33F0099CA2A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				32A3DD112E89E33F0099CA2A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				32A3DD122E89E33F0099CA2A /* WoL ManuUITests */,
+			);
+			name = "WoL ManuUITests";
+			packageProductDependencies = (
+			);
+			productName = "WoL ManuUITests";
+			productReference = 32A3DD0F2E89E33F0099CA2A /* WoL ManuUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		32A3DCF02E89E33D0099CA2A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					32A3DCF72E89E33D0099CA2A = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
+					32A3DD042E89E33F0099CA2A = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = 32A3DCF72E89E33D0099CA2A;
+					};
+					32A3DD0E2E89E33F0099CA2A = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = 32A3DCF72E89E33D0099CA2A;
+					};
+				};
+			};
+			buildConfigurationList = 32A3DCF32E89E33D0099CA2A /* Build configuration list for PBXProject "WoL Manu" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 32A3DCEF2E89E33D0099CA2A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 32A3DCF92E89E33D0099CA2A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				32A3DCF72E89E33D0099CA2A /* WoL Manu */,
+				32A3DD042E89E33F0099CA2A /* WoL ManuTests */,
+				32A3DD0E2E89E33F0099CA2A /* WoL ManuUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		32A3DCF62E89E33D0099CA2A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32A3DD032E89E33F0099CA2A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32A3DD0D2E89E33F0099CA2A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		32A3DCF42E89E33D0099CA2A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32A3DD012E89E33F0099CA2A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32A3DD0B2E89E33F0099CA2A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		32A3DD072E89E33F0099CA2A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 32A3DCF72E89E33D0099CA2A /* WoL Manu */;
+			targetProxy = 32A3DD062E89E33F0099CA2A /* PBXContainerItemProxy */;
+		};
+		32A3DD112E89E33F0099CA2A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 32A3DCF72E89E33D0099CA2A /* WoL Manu */;
+			targetProxy = 32A3DD102E89E33F0099CA2A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		32A3DD172E89E33F0099CA2A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		32A3DD182E89E33F0099CA2A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		32A3DD1A2E89E33F0099CA2A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "xxx.WoL-Manu";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		32A3DD1B2E89E33F0099CA2A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "xxx.WoL-Manu";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		32A3DD1D2E89E33F0099CA2A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "xxx.WoL-ManuTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WoL Manu.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WoL Manu";
+			};
+			name = Debug;
+		};
+		32A3DD1E2E89E33F0099CA2A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "xxx.WoL-ManuTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WoL Manu.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WoL Manu";
+			};
+			name = Release;
+		};
+		32A3DD202E89E33F0099CA2A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "xxx.WoL-ManuUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "WoL Manu";
+			};
+			name = Debug;
+		};
+		32A3DD212E89E33F0099CA2A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "xxx.WoL-ManuUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "WoL Manu";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		32A3DCF32E89E33D0099CA2A /* Build configuration list for PBXProject "WoL Manu" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				32A3DD172E89E33F0099CA2A /* Debug */,
+				32A3DD182E89E33F0099CA2A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		32A3DD192E89E33F0099CA2A /* Build configuration list for PBXNativeTarget "WoL Manu" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				32A3DD1A2E89E33F0099CA2A /* Debug */,
+				32A3DD1B2E89E33F0099CA2A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		32A3DD1C2E89E33F0099CA2A /* Build configuration list for PBXNativeTarget "WoL ManuTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				32A3DD1D2E89E33F0099CA2A /* Debug */,
+				32A3DD1E2E89E33F0099CA2A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		32A3DD1F2E89E33F0099CA2A /* Build configuration list for PBXNativeTarget "WoL ManuUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				32A3DD202E89E33F0099CA2A /* Debug */,
+				32A3DD212E89E33F0099CA2A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 32A3DCF02E89E33D0099CA2A /* Project object */;
+}
