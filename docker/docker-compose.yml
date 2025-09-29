@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  wol-forwarder:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: wol-forwarder
+    restart: unless-stopped
+    
+    # Red y puertos
+    network_mode: host  # Usar la red del host para mejor acceso a broadcast
+    
+    # Alternativamente, si prefieres usar bridge:
+    ports:
+      - "8090:8080/udp"  # Cambiar a 8090 para evitar conflicto con Pi-hole
+    # networks:
+    #   - wol-network
+    
+    # Variables de entorno
+    environment:
+      - LISTEN_PORT=8080  # Puerto interno del contenedor
+      - LOCAL_BROADCAST=192.168.3.255
+      - TARGET_IP=192.168.3.90
+      - TZ=Europe/Madrid
+      - PYTHONUNBUFFERED=1
+    
+    # Volúmenes para logs persistentes
+    volumes:
+      - wol-logs:/var/log
+    
+    # Limits de recursos
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    
+    # Salud del contenedor
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.bind(('localhost', 8080)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  wol-logs:
+    driver: local
+
+# Red personalizada (opcional, usar solo si no usas network_mode: host)
+# networks:
+#   wol-network:
+#     driver: bridge
+#     ipam:
+#       config:
+#         - subnet: 172.20.0.0/16
