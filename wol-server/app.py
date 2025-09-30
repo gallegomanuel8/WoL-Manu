@@ -71,7 +71,11 @@ def require_api_key(f):
 # Validación de MAC address
 def is_valid_mac(mac_address):
     """Validar formato de dirección MAC"""
-    if not mac_address:
+    if not mac_address or not isinstance(mac_address, str):
+        return False
+    
+    # Verificar longitud máxima para evitar DoS
+    if len(mac_address) > 50:
         return False
     
     # Limpiar MAC (quitar separadores)
@@ -81,12 +85,39 @@ def is_valid_mac(mac_address):
     if len(clean_mac) != 12:
         return False
     
+    # Verificar que no sea una MAC inválida común
+    if clean_mac in ['000000000000', 'FFFFFFFFFFFF']:
+        return False
+    
     return all(c in '0123456789ABCDEF' for c in clean_mac)
 
 def format_mac(mac_address):
     """Formatear MAC address al formato estándar AA:BB:CC:DD:EE:FF"""
     clean_mac = re.sub(r'[:\-\s]', '', mac_address.upper())
     return ':'.join([clean_mac[i:i+2] for i in range(0, 12, 2)])
+
+def is_valid_ip(ip_address):
+    """Validar formato de dirección IP (opcional)"""
+    if not ip_address or not isinstance(ip_address, str):
+        return True  # IP es opcional
+    
+    # Verificar longitud máxima
+    if len(ip_address) > 15:
+        return False
+    
+    # Validación básica IPv4
+    parts = ip_address.split('.')
+    if len(parts) != 4:
+        return False
+    
+    try:
+        for part in parts:
+            num = int(part)
+            if num < 0 or num > 255:
+                return False
+        return True
+    except ValueError:
+        return False
 
 # Función para enviar Magic Packet
 def send_magic_packet(mac_address, target_ip=None):
@@ -226,9 +257,20 @@ def wake_on_lan():
         target_ip = data.get('ip')
         device_name = data.get('name', 'Desconocido')
         
-        # Validar MAC address
+        # MEJORA #3: Validación robusta de inputs
         if not is_valid_mac(mac_address):
+            logger.warning(f"MAC inválida recibida desde {client_ip}: {mac_address}")
             return jsonify({'error': 'Formato de MAC address inválido'}), 400
+        
+        # Validar IP si se proporciona
+        if target_ip and not is_valid_ip(target_ip):
+            logger.warning(f"IP inválida recibida desde {client_ip}: {target_ip}")
+            return jsonify({'error': 'Formato de IP address inválido'}), 400
+        
+        # Validar device_name no excesivamente largo
+        if device_name and len(device_name) > 100:
+            logger.warning(f"Nombre de dispositivo excesivamente largo desde {client_ip}")
+            return jsonify({'error': 'Nombre de dispositivo demasiado largo (máx. 100 caracteres)'}), 400
         
         # Log del intento
         client_ip = request.remote_addr

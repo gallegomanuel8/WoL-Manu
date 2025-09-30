@@ -56,7 +56,7 @@ def send_test_packet(server_ip, server_port, mac_address):
 
 def main():
     # Configuración
-    SERVER_IP = "192.168.1.200"
+    SERVER_IP = "192.168.1.100"
     SERVER_PORT = 8090  # Cambiado a 8090 (8080 ocupado por Pi-hole)
     TARGET_MAC = "00:11:22:33:44:55"  # Tu dispositivo
     

@@ -99,37 +99,63 @@ class WakeOnLANService: ObservableObject {
     private func performHealthCheck(configuration: DeviceConfiguration) async throws -> Bool {
         let url = URL(string: "http://\(configuration.serverIP):\(configuration.serverPort)/health")!
         
+        // MEJORA #5: URLSession con configuración optimizada
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.timeoutIntervalForRequest = 8.0  // Aumentado de 5s
+        sessionConfig.timeoutIntervalForResource = 15.0
+        sessionConfig.waitsForConnectivity = false
+        let session = URLSession(configuration: sessionConfig)
+        
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.timeoutInterval = 5.0
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("WoLManu/1.3", forHTTPHeaderField: "User-Agent")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            return false
-        }
-        
-        if httpResponse.statusCode == 200 {
-            if let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let status = jsonResponse["status"] as? String,
-               status == "ok" {
-                print("[WoLService] Health check OK")
-                return true
+        do {
+            let (data, response) = try await session.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("[WoLService] Health check - respuesta no HTTP")
+                return false
             }
+            
+            print("[WoLService] Health check - HTTP \(httpResponse.statusCode)")
+            
+            if httpResponse.statusCode == 200 {
+                if let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let status = jsonResponse["status"] as? String,
+                   status == "ok" {
+                    print("[WoLService] Health check OK - servidor responde correctamente")
+                    return true
+                }
+                print("[WoLService] Health check - respuesta JSON inválida")
+                return false
+            }
+            
+            print("[WoLService] Health check failed - HTTP \(httpResponse.statusCode)")
+            return false
+            
+        } catch {
+            print("[WoLService] Health check error: \(error.localizedDescription)")
+            throw error
         }
-        
-        print("[WoLService] Health check failed - HTTP \(httpResponse.statusCode)")
-        return false
     }
     
     private func sendWoLRequest(configuration: DeviceConfiguration) async throws -> Bool {
         let url = URL(string: "http://\(configuration.serverIP):\(configuration.serverPort)/wol")!
         
+        // MEJORA #5: URLSession con configuración optimizada
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.timeoutIntervalForRequest = 10.0  // Aumentado de 5s
+        sessionConfig.timeoutIntervalForResource = 25.0
+        sessionConfig.waitsForConnectivity = false
+        sessionConfig.allowsCellularAccess = false  // Solo WiFi/Ethernet
+        let session = URLSession(configuration: sessionConfig)
+        
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 5.0
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("WoLManu/1.3", forHTTPHeaderField: "User-Agent")
         
         // Add API Key if configured
         if !configuration.apiKey.isEmpty {
@@ -145,20 +171,23 @@ class WakeOnLANService: ObservableObject {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
-        // Retry logic with exponential backoff
+        // MEJORA #5: Retry logic mejorado con exponential backoff y jitter
         var lastError: Error?
-        var backoffDelay: Double = 0.5
+        var baseDelay: Double = 0.8  // Aumentado
         
-        for attempt in 1...3 {
+        let maxRetries = 4  // Aumentado de 3 a 4
+        for attempt in 1...maxRetries {
             do {
-                let (data, response) = try await URLSession.shared.data(for: request)
+                print("[WoLService] Enviando WoL request (intento \(attempt)/\(maxRetries))")
+                let (data, response) = try await session.data(for: request)
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
+                    print("[WoLService] Respuesta no HTTP")
                     throw URLError(.badServerResponse)
                 }
                 
                 let httpCode = httpResponse.statusCode
-                print("[WoLService] HTTP Response: \(httpCode)")
+                print("[WoLService] Servidor responde HTTP \(httpCode)")
                 
                 // Handle different response codes
                 switch httpCode {
@@ -179,6 +208,18 @@ class WakeOnLANService: ObservableObject {
                         logResult(method: "VPN", success: false, message: message, httpCode: httpCode)
                     }
                     return false
+                    
+                case 429:
+                    // MEJORA #5: Manejo específico de rate limiting
+                    let message = "Rate limit alcanzado"
+                    print("[WoLService] \(message) - Intento \(attempt)/\(maxRetries)")
+                    if attempt == maxRetries {
+                        await MainActor.run {
+                            logResult(method: "VPN", success: false, message: message, httpCode: httpCode)
+                        }
+                        return false
+                    }
+                    // Continuar con retry pero con delay mayor para rate limiting
                     
                 case 400...499:
                     let message = "Error en petición: \(httpCode)"
@@ -210,12 +251,21 @@ class WakeOnLANService: ObservableObject {
                 
             } catch {
                 lastError = error
-                if attempt < 3 {
-                    print("[WoLService] Intento \(attempt) falló: \(error.localizedDescription). Reintentando en \(backoffDelay)s...")
-                    try await Task.sleep(nanoseconds: UInt64(backoffDelay * 1_000_000_000))
-                    backoffDelay *= 2 // Exponential backoff
+                print("[WoLService] Error en intento \(attempt): \(error.localizedDescription)")
+                if attempt < maxRetries {
+                    // MEJORA #5: Backoff exponencial con jitter para evitar thundering herd
+                    let isRateLimit = (error as? URLError)?.code == URLError.Code.timedOut || 
+                                     String(describing: error).contains("429")
+                    
+                    let multiplier = isRateLimit ? 3.0 : 1.0  // Delay mayor para rate limiting
+                    let exponentialDelay = min(pow(2.0, Double(attempt - 1)) * baseDelay * multiplier, 15.0)
+                    let jitter = Double.random(in: 0.1...0.4) * exponentialDelay  // 10-40% jitter
+                    let totalDelay = exponentialDelay + jitter
+                    
+                    print("[WoLService] Esperando \(String(format: "%.1f", totalDelay))s antes del siguiente intento...")
+                    try await Task.sleep(nanoseconds: UInt64(totalDelay * 1_000_000_000))
                 } else {
-                    print("[WoLService] Todos los intentos fallaron")
+                    print("[WoLService] Todos los intentos fallaron tras \(maxRetries) reintentos")
                     throw error
                 }
             }
@@ -320,7 +370,7 @@ class WakeOnLANService: ObservableObject {
     // MARK: - Construcción del paquete
     
     /// Convierte una MAC en bytes
-    private func parseMACAddress(_ macAddress: String) -> [UInt8]? {
+    internal func parseMACAddress(_ macAddress: String) -> [UInt8]? {
         let cleanMAC = macAddress
             .replacingOccurrences(of: ":", with: "")
             .replacingOccurrences(of: "-", with: "")
@@ -341,7 +391,7 @@ class WakeOnLANService: ObservableObject {
     }
     
     /// 6 bytes 0xFF + 16 repeticiones de la MAC
-    private func buildMagicPacket(macBytes: [UInt8]) -> Data? {
+    internal func buildMagicPacket(macBytes: [UInt8]) -> Data? {
         guard macBytes.count == 6 else { return nil }
         var packet = Data()
         for _ in 0..<6 { packet.append(0xFF) }
@@ -450,13 +500,17 @@ class WakeOnLANService: ObservableObject {
     private func sendUDPToAddress(data: Data, address: String, port: UInt16) -> Bool {
         let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         if fd < 0 {
+            print("[WoLService] Error creating socket: \(String(cString: strerror(errno)))")
             return false
         }
-        defer { close(fd) }
         
         // Permitir broadcast
         var yes: Int32 = 1
-        _ = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &yes, socklen_t(MemoryLayout.size(ofValue: yes)))
+        if setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &yes, socklen_t(MemoryLayout.size(ofValue: yes))) < 0 {
+            print("[WoLService] Error setting SO_BROADCAST: \(String(cString: strerror(errno)))")
+            close(fd)
+            return false
+        }
         
         // Reutilizar dirección
         var reuse: Int32 = 1
@@ -469,6 +523,8 @@ class WakeOnLANService: ObservableObject {
         
         // Convertir IP string a in_addr
         if inet_pton(AF_INET, address, &addr.sin_addr) != 1 {
+            print("[WoLService] Invalid IP address format: \(address)")
+            close(fd)
             return false
         }
         
@@ -482,7 +538,16 @@ class WakeOnLANService: ObservableObject {
             }
         }
         
-        return sent == data.count
+        let success = sent == data.count
+        if !success {
+            print("[WoLService] Error sending UDP packet: \(String(cString: strerror(errno)))")
+        }
+        
+        // MEJORA #6: Delay explícito antes de cerrar socket para asegurar transmisión
+        usleep(300_000) // 300ms delay
+        close(fd)
+        
+        return success
     }
     
     /// Calcula la dirección de broadcast de una subnet dada una IP

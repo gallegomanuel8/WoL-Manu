@@ -131,13 +131,24 @@ EOF
     log_info "Archivo de configuración creado en $CONFIG_DIR/config.json"
     log_info "API Key generada: $API_KEY"
     
-    log_step "8. Configurando permisos"
+    log_step "8. Configurando permisos (hardening)"
+    # MEJORA #4: Permisos restrictivos para seguridad
     chown -R "$WOL_USER:$WOL_GROUP" "$WOL_HOME"
     chown -R "$WOL_USER:$WOL_GROUP" "$CONFIG_DIR"
-    chmod 600 "$CONFIG_DIR/config.json"  # Solo lectura para el propietario
+    
+    # Configuración: solo el usuario wol-server puede leer
+    chmod 600 "$CONFIG_DIR/config.json"  
+    chmod 700 "$CONFIG_DIR"  # Solo el usuario puede acceder al directorio
+    
+    # Directorio de aplicación: solo el usuario
+    chmod 750 "$WOL_HOME"
+    chmod 640 "$WOL_HOME"/*.py 2>/dev/null || true
+    chmod 640 "$WOL_HOME"/*.txt 2>/dev/null || true
+    
+    # Log file: escribible por usuario, legible por grupo
     touch "$LOG_FILE"
     chown "$WOL_USER:$WOL_GROUP" "$LOG_FILE"
-    chmod 644 "$LOG_FILE"
+    chmod 640 "$LOG_FILE"  # Más restrictivo que 644
     
     log_step "9. Creando servicio systemd"
     cat > "/etc/systemd/system/$SERVICE_NAME.service" << EOF
@@ -158,12 +169,23 @@ RestartSec=3
 StandardOutput=journal
 StandardError=journal
 
-# Security settings
+# MEJORA #4: Security settings hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 ReadWritePaths=$LOG_FILE $CONFIG_DIR
 PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
 
 [Install]
 WantedBy=multi-user.target

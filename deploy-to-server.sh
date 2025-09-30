@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script para implementar WoL Server en 192.168.1.200
-# Uso: ./deploy-to-server.sh [usuario@192.168.1.200]
+# Script para implementar WoL Server en servidor remoto
+# Uso: ./deploy-to-server.sh [usuario@servidor]
 
 set -e
 

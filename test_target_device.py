@@ -96,7 +96,7 @@ def send_wol_packet(mac_address, target_ip):
             success_count += 1
     
     # Strategy 3: Common subnets for VPN scenarios
-    common_subnets = ["192.168.1.255", "192.168.1.255", "192.168.0.255"]
+    common_subnets = ["192.168.1.255", "192.168.0.255", "10.0.0.255"]
     for subnet in common_subnets:
         for port in [9, 7]:
             if send_udp_to_address(magic_packet, subnet, port):

@@ -171,7 +171,7 @@ class DockerWoLForwarder:
         
         # Reenviar paquete a la red local
         forwarded = self.forward_wol_packet(data, client_addr, mac_address)
-        logger.info(f"📡 Paquete reenviado a {forwarded} destinos en red 192.168.3.x")
+        logger.info(f"📡 Paquete reenviado a {forwarded} destinos en red 192.168.1.x")
         logger.info(f"🔥 Intentando despertar dispositivo MAC: {mac_address}")
     
     def print_stats(self):
@@ -195,7 +195,7 @@ class DockerWoLForwarder:
             logger.info("🐳 WoL Forwarder para Docker iniciado")
             logger.info(f"🌐 Servidor WireGuard: 192.168.1.200")
             logger.info(f"👂 Escuchando en puerto: {LISTEN_PORT}")
-            logger.info(f"📡 Red de destino: 192.168.3.x")
+            logger.info(f"📡 Red de destino: 192.168.1.x")
             logger.info(f"🎯 Dispositivo objetivo: 192.168.1.100")
             logger.info(f"🔌 Puertos WoL: {WOL_PORTS}")
             
