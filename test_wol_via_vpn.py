@@ -224,8 +224,8 @@ def wait_for_device_with_timeout(ip_address, max_wait=90):
 def main():
     """Main function"""
     # Configuration
-    mac_address = "70:85:C2:98:7B:3E"
-    target_ip = "192.168.3.90"
+    mac_address = "00:11:22:33:44:55"
+    target_ip = "192.168.1.100"
     
     print("🔧 Iniciando Wake-on-LAN avanzado a través de WireGuard VPN")
     print("=" * 60)

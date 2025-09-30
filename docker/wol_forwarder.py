@@ -16,7 +16,7 @@ from datetime import datetime
 # Configuración específica para tu red
 LISTEN_PORT = 8080
 WOL_PORTS = [7, 9, 0]  # Puertos estándar Wake-on-LAN
-LOCAL_BROADCAST = "192.168.3.255"  # Broadcast de tu red local
+LOCAL_BROADCAST = "192.168.1.255"  # Broadcast de tu red local
 GLOBAL_BROADCAST = "255.255.255.255"
 
 # Configurar logging
@@ -138,7 +138,7 @@ class DockerWoLForwarder:
             logger.info(f"✅ WoL enviado a broadcast local {LOCAL_BROADCAST}:9 para MAC {mac_address}")
         
         # 3. Envío directo puerto 9 (para dispositivos específicos)
-        target_ip = "192.168.3.90"  # IP de tu dispositivo objetivo
+        target_ip = "192.168.1.100"  # IP de tu dispositivo objetivo
         if self.send_wakeonlan_style(magic_packet, target_ip, 9, mac_address):
             total_sent += 1
             logger.info(f"✅ WoL enviado directo a {target_ip}:9 para MAC {mac_address}")
@@ -171,7 +171,7 @@ class DockerWoLForwarder:
         
         # Reenviar paquete a la red local
         forwarded = self.forward_wol_packet(data, client_addr, mac_address)
-        logger.info(f"📡 Paquete reenviado a {forwarded} destinos en red 192.168.3.x")
+        logger.info(f"📡 Paquete reenviado a {forwarded} destinos en red 192.168.1.x")
         logger.info(f"🔥 Intentando despertar dispositivo MAC: {mac_address}")
     
     def print_stats(self):
@@ -193,10 +193,10 @@ class DockerWoLForwarder:
             self.server_socket.bind(('0.0.0.0', LISTEN_PORT))
             
             logger.info("🐳 WoL Forwarder para Docker iniciado")
-            logger.info(f"🌐 Servidor WireGuard: 192.168.3.99")
+            logger.info(f"🌐 Servidor WireGuard: 192.168.1.200")
             logger.info(f"👂 Escuchando en puerto: {LISTEN_PORT}")
-            logger.info(f"📡 Red de destino: 192.168.3.x")
-            logger.info(f"🎯 Dispositivo objetivo: 192.168.3.90")
+            logger.info(f"📡 Red de destino: 192.168.1.x")
+            logger.info(f"🎯 Dispositivo objetivo: 192.168.1.100")
             logger.info(f"🔌 Puertos WoL: {WOL_PORTS}")
             
             self.running = True

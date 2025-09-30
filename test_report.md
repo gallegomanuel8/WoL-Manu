@@ -9,8 +9,8 @@
 
 | Parámetro | Valor |
 |-----------|--------|
-| **MAC Address** | `70:85:C2:98:7B:3E` |
-| **IP Address** | `192.168.3.90` |
+| **MAC Address** | `00:11:22:33:44:55` |
+| **IP Address** | `192.168.1.100` |
 | **Dispositivo** | Mac Target |
 | **Puerto UDP** | `9` (estándar WoL) |
 | **Broadcast** | `255.255.255.255` |
@@ -57,7 +57,7 @@
 1. **Magic Packet Válido:**
    - Tamaño correcto: 102 bytes
    - Estructura: 6 bytes 0xFF + 96 bytes (16 × 6 bytes MAC)
-   - MAC Address parseable: `70:85:C2:98:7B:3E`
+   - MAC Address parseable: `00:11:22:33:44:55`
 
 2. **Red Funcional:**
    - Conectividad bidireccional perfecta

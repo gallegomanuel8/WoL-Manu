@@ -106,7 +106,7 @@ struct ConfigurationView: View {
                                         .font(.headline)
                                         .foregroundColor(.primary)
                                     
-                                    TextField("Ej: 192.168.3.99", text: $serverIP)
+                                    TextField("Ej: 192.168.1.200", text: $serverIP)
                                         .textFieldStyle(.roundedBorder)
                                 }
                                 

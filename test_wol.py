@@ -118,8 +118,8 @@ def main():
     print()
     
     # Configuration
-    mac_address = "70:85:C2:98:7B:3E"
-    ip_address = "192.168.3.90"
+    mac_address = "00:11:22:33:44:55"
+    ip_address = "192.168.1.100"
     
     print(f"🎯 Dispositivo objetivo:")
     print(f"   MAC Address: {mac_address}")

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Test script for the specific target device
-MAC: 70:85:C2:98:7B:3E
-IP: 192.168.3.90
+MAC: 00:11:22:33:44:55
+IP: 192.168.1.100
 """
 
 import socket
@@ -12,8 +12,8 @@ import sys
 import json
 
 # Device configuration
-TARGET_MAC = "70:85:C2:98:7B:3E"
-TARGET_IP = "192.168.3.90"
+TARGET_MAC = "00:11:22:33:44:55"
+TARGET_IP = "192.168.1.100"
 DEVICE_NAME = "Dispositivo Objetivo"
 
 def load_config():
@@ -96,7 +96,7 @@ def send_wol_packet(mac_address, target_ip):
             success_count += 1
     
     # Strategy 3: Common subnets for VPN scenarios
-    common_subnets = ["192.168.3.255", "192.168.1.255", "192.168.0.255"]
+    common_subnets = ["192.168.1.255", "192.168.0.255", "10.0.0.255"]
     for subnet in common_subnets:
         for port in [9, 7]:
             if send_udp_to_address(magic_packet, subnet, port):

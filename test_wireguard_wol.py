@@ -142,8 +142,8 @@ def main():
     print()
     
     # Configuration
-    mac_address = "70:85:C2:98:7B:3E"
-    target_ip = "192.168.3.90"
+    target_mac = "00:11:22:33:44:55"
+    target_ip = "192.168.1.100"
     
     # Test 1: WireGuard connectivity
     if not test_wireguard_connection():

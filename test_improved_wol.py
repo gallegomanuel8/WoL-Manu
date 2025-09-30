@@ -123,7 +123,7 @@ def test_improved_wol(mac_address, target_ip=None):
     # Strategy 3: Common subnets (VPN scenarios)
     print()
     print("🔄 Estrategia 3: Subnets Comunes")
-    common_subnets = ["192.168.1.255", "192.168.0.255", "192.168.3.255", "10.0.0.255", "172.16.0.255"]
+    common_subnets = ["192.168.1.255", "192.168.0.255", "10.0.0.255", "172.16.0.255"]
     for subnet in common_subnets:
         for port in ports:
             if send_udp_to_address(magic_packet, subnet, port):
@@ -144,8 +144,8 @@ def test_improved_wol(mac_address, target_ip=None):
 def main():
     """Main test function"""
     # Use the same configuration from config.json
-    mac_address = "70:85:C2:98:7B:3E"
-    target_ip = "192.168.3.99"
+    mac_address = "00:11:22:33:44:55"
+    target_ip = "192.168.1.100"
     
     try:
         success = test_improved_wol(mac_address, target_ip)

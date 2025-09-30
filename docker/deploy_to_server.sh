@@ -2,7 +2,7 @@
 
 # Script para desplegar WoL Forwarder en servidor Docker
 # Configuración
-SERVER_IP="192.168.3.99"
+SERVER_IP="192.168.1.200"
 SERVER_USER="root"  # Ajustar según tu configuración
 DOCKER_PATH="/opt/wol-forwarder"
 
