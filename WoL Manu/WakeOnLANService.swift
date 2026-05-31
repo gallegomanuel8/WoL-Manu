@@ -2,7 +2,7 @@
 //  WakeOnLANService.swift
 //  WoL Manu
 //
-//  Created by Manuel Alonso Rodriguez on 28/9/25.
+//  Created by WoL Manu on 28/9/25.
 //
 
 import Foundation
