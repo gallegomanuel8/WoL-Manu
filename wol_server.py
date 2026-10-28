@@ -13,6 +13,7 @@ Features:
 - Magic packet broadcasting (UDP port 9)
 """
 
+import hmac
 import os
 import json
 import logging
@@ -34,6 +35,30 @@ MAX_REQUEST_SIZE = 1024  # 1KB max request size (DoS protection)
 MAX_MAC_LENGTH = 50      # Max MAC address string length
 MAX_IP_LENGTH = 15       # Max IPv4 address length  
 REQUEST_TIMEOUT = 30     # Request timeout in seconds
+
+
+def load_api_key():
+    """
+    API key required in the X-API-Key header for /wake.
+
+    Read from the file in WOL_API_KEY_FILE (preferred: keeps the secret out of
+    the process environment and unit files) or from WOL_API_KEY.
+    Returns None when no key is configured (authentication disabled).
+    """
+    key_file = os.getenv('WOL_API_KEY_FILE')
+    if key_file:
+        try:
+            with open(key_file, 'r') as f:
+                key = f.read().strip()
+            if key:
+                return key
+        except OSError as e:
+            print(f"WARNING: cannot read WOL_API_KEY_FILE ({key_file}): {e}", file=sys.stderr)
+    key = os.getenv('WOL_API_KEY', '').strip()
+    return key or None
+
+
+API_KEY = load_api_key()
 
 # Global statistics
 server_stats = {
@@ -352,10 +377,25 @@ class WoLHandler(BaseHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         
         if parsed_path.path == '/wake':
+            if not self.is_authorized():
+                return
             self.handle_wake_request()
         else:
             self.send_error_response(404, "Endpoint not found")
     
+    def is_authorized(self):
+        """Check X-API-Key (constant-time). Sends 401 and returns False when invalid."""
+        if API_KEY is None:
+            return True
+        provided = self.headers.get('X-API-Key', '')
+        if provided and hmac.compare_digest(provided.encode('utf-8'), API_KEY.encode('utf-8')):
+            return True
+        server_stats["security_violations"] += 1
+        logger.warning(f"Unauthorized /wake from {self.client_address[0]} "
+                       f"({'missing' if not provided else 'invalid'} X-API-Key)")
+        self.send_error_response(401, "Unauthorized")
+        return False
+
     def handle_health_check(self):
         """Handle health check requests."""
         uptime = datetime.now(timezone.utc) - server_stats["start_time"]
@@ -522,6 +562,10 @@ def main():
         logger.info(f"🌐 WoL Server v{SERVER_VERSION} starting...")
         logger.info(f"📡 Listening on {host}:{port}")
         logger.info(f"🔐 Security features: Input validation, DoS protection, Injection prevention")
+        if API_KEY:
+            logger.info("🔑 API key required for /wake (X-API-Key)")
+        else:
+            logger.warning("⚠️  No API key configured (WOL_API_KEY_FILE / WOL_API_KEY): /wake is open to anyone on the network")
         logger.info(f"📊 Health check: http://{host}:{port}/health")
         logger.info(f"🔌 Wake endpoint: http://{host}:{port}/wake")
         logger.info("=" * 60)

@@ -114,6 +114,21 @@ Returns server status and basic metrics for monitoring.
 
 ## 🛡️ Security Features
 
+### API Key Authentication
+
+`POST /wake` requires the `X-API-Key` header when a key is configured (`GET /health` stays open). Requests without a valid key get `401 Unauthorized` and count as a security violation. The comparison is constant-time (`hmac.compare_digest`).
+
+The key is read at startup from:
+
+| Variable | Description |
+|---|---|
+| `WOL_API_KEY_FILE` | Path to a file containing the key (preferred, e.g. `/etc/wol-server/api_key` with mode `600`) |
+| `WOL_API_KEY` | The key itself (fallback) |
+
+If neither is set the server logs a warning and `/wake` is open to anyone who can reach it.
+
+The macOS app stores the key in the Keychain (not in `config.json`). `scripts/deploy_relay_api_key.sh` deploys the server, writes the key file over SSH via stdin, adds a systemd drop-in with `WOL_API_KEY_FILE` and `WOL_BROADCAST_IP`, and verifies `/health` → 200, `/wake` without key → 401, with key → 400 (no MAC, nothing sent). Add `--harden-ssh` to disable SSH password logins.
+
 ### Input Validation & Sanitization
 
 The server implements **comprehensive input validation** to prevent injection attacks and ensure data integrity:

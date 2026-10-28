@@ -77,16 +77,27 @@ class ConfigurationManager: ObservableObject {
         loadConfiguration()
     }
     
+    private static let apiKeyAccount = "relay-api-key"
+    
     func loadConfiguration() {
         guard FileManager.default.fileExists(atPath: configFileURL.path) else {
             print("Config file doesn't exist, using default configuration")
+            configuration.apiKey = KeychainHelper.read(key: Self.apiKeyAccount) ?? ""
             return
         }
         
         do {
             let data = try Data(contentsOf: configFileURL)
-            let config = try JSONDecoder().decode(DeviceConfiguration.self, from: data)
-            self.configuration = config
+            var config = try JSONDecoder().decode(DeviceConfiguration.self, from: data)
+            if config.apiKey.isEmpty {
+                config.apiKey = KeychainHelper.read(key: Self.apiKeyAccount) ?? ""
+                self.configuration = config
+            } else {
+                // Migración: la API key estaba en texto plano en config.json → al Llavero
+                self.configuration = config
+                saveConfiguration()
+                print("API key migrada de config.json al Llavero")
+            }
             print("Configuration loaded successfully")
         } catch {
             print("Error loading configuration: \(error)")
@@ -101,8 +112,16 @@ class ConfigurationManager: ObservableObject {
                 withIntermediateDirectories: true
             )
             
-            let data = try JSONEncoder().encode(configuration)
-            try data.write(to: configFileURL)
+            // La API key va al Llavero; en el fichero queda vacía
+            if configuration.apiKey.isEmpty {
+                KeychainHelper.delete(key: Self.apiKeyAccount)
+            } else {
+                KeychainHelper.save(key: Self.apiKeyAccount, value: configuration.apiKey)
+            }
+            var onDisk = configuration
+            onDisk.apiKey = ""
+            let data = try JSONEncoder().encode(onDisk)
+            try data.write(to: configFileURL, options: .atomic)
             print("Configuration saved successfully to: \(configFileURL.path)")
         } catch {
             print("Error saving configuration: \(error)")
@@ -114,7 +133,9 @@ class ConfigurationManager: ObservableObject {
     func exportConfiguration(to url: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(configuration)
+        var exported = configuration
+        exported.apiKey = ""  // los secretos no salen del Llavero
+        let data = try encoder.encode(exported)
         try data.write(to: url)
         print("Configuration exported successfully to: \(url.path)")
     }

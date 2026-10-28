@@ -397,6 +397,10 @@ class WakeOnLANService: ObservableObject {
     
     /// Convierte una MAC en bytes
     internal func parseMACAddress(_ macAddress: String) -> [UInt8]? {
+        // Un único tipo de separador: "00:1B-63:…" es casi seguro un error de escritura
+        let separators = Set(macAddress.filter { ":- ".contains($0) })
+        guard separators.count <= 1 else { return nil }
+
         let cleanMAC = macAddress
             .replacingOccurrences(of: ":", with: "")
             .replacingOccurrences(of: "-", with: "")

@@ -51,6 +51,7 @@ struct ConfigurationView: View {
                         TextField("IP del servidor", text: $serverIP, prompt: Text("192.168.1.200"))
                         TextField("Puerto", text: $serverPort, prompt: Text("5000"))
                         SecureField("API Key", text: $apiKey, prompt: Text("Opcional"))
+                            .help("Se guarda en el Llavero de macOS, no en config.json")
                         Toggle("Probar en local si el servidor falla", isOn: $fallbackLocal)
                     }
                 } header: {
@@ -314,7 +315,9 @@ struct ConfigurationDocument: FileDocument {
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(self.configuration)
+        var exported = self.configuration
+        exported.apiKey = ""  // los secretos no salen del Llavero
+        let data = try encoder.encode(exported)
         return FileWrapper(regularFileWithContents: data)
     }
 }
