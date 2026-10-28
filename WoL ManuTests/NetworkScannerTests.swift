@@ -60,4 +60,37 @@ class NetworkScannerTests: XCTestCase {
         XCTAssertTrue(iface.contains(IPv4.parse("192.168.1.200")!))
         XCTAssertFalse(iface.contains(IPv4.parse("192.168.4.1")!))
     }
+    
+    // MARK: - Vendor (OUI) & device type
+    
+    func testVendorLookup() {
+        let db = OUIDatabase.shared
+        XCTAssertEqual(db.vendor(for: "70:85:C2:00:00:01"), "ASRock")
+        XCTAssertEqual(db.vendor(for: "bc-24-11-00-00-01"), "Proxmox Server Solutions", "Should accept lowercase and dashes")
+        XCTAssertEqual(db.vendor(for: "B8:27:EB:00:00:01"), "Raspberry Pi Foundation")
+        XCTAssertNil(db.vendor(for: "not a mac"))
+    }
+    
+    func testVendorLookup_PrefersMostSpecificBlock() {
+        // 70:B3:D5 es un bloque MA-S (/36): cada sub-bloque tiene su propio fabricante
+        let db = OUIDatabase.shared
+        XCTAssertEqual(db.vendor(for: "70:B3:D5:00:1A:BC"), "SOREDI touch systems", "Should resolve the /36 owner")
+        XCTAssertEqual(db.vendor(for: "70:B3:D5:00:2A:BC"), "Gogo BA")
+    }
+    
+    func testClassifier() {
+        func host(_ mac: String?, ports: [UInt16] = [], name: String? = nil) -> ScannedHost {
+            var h = ScannedHost(ip: 1, mac: mac, hostname: name)
+            h.openPorts = ports.map { OpenPort(port: $0, name: "") }
+            return h
+        }
+        XCTAssertEqual(host("BC:24:11:00:00:01", ports: [22]).kind, .virtualMachine)
+        XCTAssertEqual(host("FC:12:63:00:00:01").kind, .router, "Askey → router")
+        XCTAssertEqual(host("70:85:C2:00:00:02").kind, .computer, "ASRock → PC")
+        XCTAssertEqual(host("AA:00:00:00:00:01").kind, .mobilePrivate)
+        XCTAssertEqual(host("AA:00:00:00:00:01", name: "iPhone-de-prueba.local").kind, .phone)
+        XCTAssertEqual(host("84:B8:B8:00:00:01").kind, .phone, "Motorola → móvil")
+        XCTAssertEqual(host(nil, ports: [9100]).kind, .printer)
+        XCTAssertEqual(host(nil).kind, .unknown)
+    }
 }

@@ -97,66 +97,199 @@ nonisolated struct OpenPort: Hashable, Sendable {
 }
 
 nonisolated enum HostKind: Sendable {
-    case thisMac, router, computer, phone, printer, server, unknown
-
+    case thisMac, router, computer, phone, mobilePrivate, printer, server, nas, virtualMachine
+    case media, speaker, camera, iot, console, unknown
+    
     var symbol: String {
         switch self {
         case .thisMac: "laptopcomputer"
         case .router: "wifi.router"
         case .computer: "desktopcomputer"
         case .phone: "iphone"
+        case .mobilePrivate: "iphone.gen3"
         case .printer: "printer"
         case .server: "server.rack"
+        case .nas: "externaldrive.connected.to.line.below"
+        case .virtualMachine: "square.stack.3d.up"
+        case .media: "tv"
+        case .speaker: "hifispeaker"
+        case .camera: "video"
+        case .iot: "lightbulb.led"
+        case .console: "gamecontroller"
         case .unknown: "network"
         }
     }
-
+    
     var label: String {
         switch self {
         case .thisMac: "Este Mac"
-        case .router: "Router / puerta de enlace"
+        case .router: "Router / red"
         case .computer: "Ordenador"
-        case .phone: "iPhone / iPad"
+        case .phone: "Móvil / tablet"
+        case .mobilePrivate: "Móvil (MAC privada)"
         case .printer: "Impresora"
         case .server: "Servidor"
-        case .unknown: "Dispositivo"
+        case .nas: "NAS"
+        case .virtualMachine: "Máquina virtual"
+        case .media: "TV / multimedia"
+        case .speaker: "Altavoz"
+        case .camera: "Cámara"
+        case .iot: "IoT / domótica"
+        case .console: "Consola"
+        case .unknown: "Desconocido"
         }
     }
 }
 
 nonisolated struct ScannedHost: Identifiable, Hashable, Sendable {
     let ip: UInt32
-    var mac: String?
+    var mac: String? {
+        didSet { vendor = mac.flatMap(OUIDatabase.shared.vendor(for:)) }
+    }
+    private(set) var vendor: String?
     var hostname: String?
     var latencyMs: Double?
     var openPorts: [OpenPort] = []
     var isThisMac = false
     var isGateway = false
-
+    
+    init(ip: UInt32, mac: String? = nil, hostname: String? = nil, latencyMs: Double? = nil, isThisMac: Bool = false) {
+        self.ip = ip
+        self.hostname = hostname
+        self.latencyMs = latencyMs
+        self.isThisMac = isThisMac
+        self.mac = mac
+        self.vendor = mac.flatMap(OUIDatabase.shared.vendor(for:))
+    }
+    
     var id: UInt32 { ip }
     var ipString: String { IPv4.string(ip) }
-
+    
     /// Bit "localmente administrado": MAC aleatoria (privada) de iOS/macOS/Android
     var isPrivateMAC: Bool {
         guard let first = mac?.prefix(2), let byte = UInt8(first, radix: 16) else { return false }
         return byte & 0x02 != 0
     }
-
-    var kind: HostKind {
-        let ports = Set(openPorts.map(\.port))
-        if isThisMac { return .thisMac }
-        if isGateway { return .router }
-        if ports.contains(62078) { return .phone }
-        if !ports.isDisjoint(with: [9100, 631, 515]) { return .printer }
-        if !ports.isDisjoint(with: [3389, 445, 139, 548, 5900]) { return .computer }
-        if !ports.isDisjoint(with: [22, 80, 443, 5000, 8080, 53]) { return .server }
-        return .unknown
+    
+    var kind: HostKind { DeviceClassifier.classify(self) }
+    
+    /// "Router / red · Askey Computer", "Máquina virtual · Proxmox Server Solutions"…
+    var deviceDescription: String {
+        guard let vendor else { return kind.label }
+        return "\(kind.label) · \(vendor)"
     }
-
+    
     // Claves de ordenación para la tabla
     var nameSort: String { hostname?.lowercased() ?? "\u{10FFFF}" }
     var macSort: String { mac ?? "\u{10FFFF}" }
     var latencySort: Double { latencyMs ?? .infinity }
+    var deviceSort: String { kind == .unknown ? "\u{10FFFF}" : deviceDescription.lowercased() }
+}
+
+// MARK: - Fabricante (OUI)
+
+/// Prefijos MAC → fabricante, desde `oui.txt` (ver scripts/update_oui.py). Se carga una vez, bajo demanda.
+nonisolated final class OUIDatabase: Sendable {
+    static let shared = OUIDatabase()
+    
+    private let entries: [String: String]
+    
+    private init() {
+        var entries: [String: String] = [:]
+        if let url = Bundle.main.url(forResource: "oui", withExtension: "txt"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            entries.reserveCapacity(60_000)
+            for line in text.split(separator: "\n") where !line.hasPrefix("#") {
+                guard let tab = line.firstIndex(of: "\t") else { continue }
+                entries[String(line[..<tab])] = String(line[line.index(after: tab)...])
+            }
+        }
+        self.entries = entries
+    }
+    
+    func vendor(for mac: String) -> String? {
+        let hex = mac.filter(\.isHexDigit).uppercased()
+        guard hex.count == 12 else { return nil }
+        // Bloques más específicos primero: MA-S (/36), MA-M (/28), MA-L (/24)
+        for bits in [36, 28, 24] {
+            if let name = entries["\(hex.prefix(bits / 4))/\(bits)"] { return name }
+        }
+        return nil
+    }
+}
+
+// MARK: - Tipo de dispositivo
+
+nonisolated enum DeviceClassifier {
+    /// Prefijos de NICs virtuales (hipervisores)
+    private static let virtualPrefixes = [
+        "52:54:00", // QEMU / KVM
+        "BC:24:11", // Proxmox
+        "08:00:27", // VirtualBox
+        "00:15:5D", // Hyper-V
+        "00:1C:42", // Parallels
+        "00:50:56", "00:0C:29", "00:05:69", // VMware
+        "00:16:3E", // Xen
+    ]
+    
+    private static let vendorKinds: [(HostKind, [String])] = [
+        (.virtualMachine, ["proxmox", "vmware", "parallels", "xensource"]),
+        (.nas, ["synology", "qnap", "asustor", "buffalo", "western digital", "terramaster"]),
+        (.camera, ["hikvision", "dahua", "reolink", "axis communications", "ezviz", "foscam", "amcrest", "arlo"]),
+        (.printer, ["brother", "seiko epson", "canon", "xerox", "kyocera", "lexmark", "ricoh", "konica"]),
+        (.speaker, ["sonos", "bose", "harman", "bang & olufsen", "denon", "yamaha"]),
+        (.console, ["nintendo", "sony interactive", "valve"]),
+        (.phone, ["motorola", "oneplus", "oppo", "vivo mobile", "realme", "honor device", "nothing technology",
+                  "fairphone", "zte mobile", "huawei device"]),
+        (.media, ["roku", "tp vision", "hisense", "tcl", "vizio", "lg electronics", "amazon", "google",
+                  "apple tv", "nvidia", "sky uk", "skyworth"]),
+        (.iot, ["espressif", "tuya", "shelly", "allterco", "signify", "philips lighting", "nest labs",
+                "ring llc", "ecobee", "ikea", "itead", "broadlink", "xiaomi", "aqara", "lumi united",
+                "texas instruments", "silicon laboratories", "nordic semiconductor", "netatmo", "tado"]),
+        (.router, ["askey", "sercomm", "zte", "tp-link", "netgear", "ubiquiti", "mikrotik", "routerboard",
+                   "avm", "arcadyan", "technicolor", "sagemcom", "mitrastar", "zyxel", "d-link", "linksys",
+                   "cisco", "aruba", "juniper", "fortinet", "eero", "huawei", "comtrend", "observa", "teltonika"]),
+        (.server, ["raspberry pi", "super micro", "supermicro"]),
+        (.computer, ["asrock", "asustek", "gigabyte", "giga-byte", "micro-star", "elitegroup", "jetway",
+                     "intel", "dell", "lenovo", "acer", "hewlett", "hp inc", "framework", "liteon",
+                     "azurewave", "hon hai", "realtek", "shuttle", "zotac", "beelink", "minisforum"]),
+    ]
+    
+    static func classify(_ host: ScannedHost) -> HostKind {
+        let ports = Set(host.openPorts.map(\.port))
+        let vendor = host.vendor?.lowercased() ?? ""
+        let name = host.hostname?.lowercased() ?? ""
+        
+        if host.isThisMac { return .thisMac }
+        if host.isGateway { return .router }
+        if let mac = host.mac, virtualPrefixes.contains(where: mac.hasPrefix) { return .virtualMachine }
+        
+        // Pistas del nombre (mDNS/DNS)
+        if ["iphone", "ipad", "android", "galaxy", "pixel", "redmi"].contains(where: name.contains) { return .phone }
+        if ["macbook", "imac", "mac-mini", "macmini", "mac-studio", "desktop-", "laptop-", "-pc"].contains(where: name.contains) { return .computer }
+        if ["appletv", "apple-tv", "chromecast", "roku", "firetv", "fire-tv"].contains(where: name.contains) { return .media }
+        if name.contains("homepod") || name.contains("sonos") { return .speaker }
+        
+        // Servicios
+        if ports.contains(62078) { return .phone }
+        if !ports.isDisjoint(with: [9100, 631, 515]) { return .printer }
+        
+        // Fabricante
+        // Coincidencia al inicio de palabra: evita que "zte" case con "Aztech" o "ring" con "Engineering"
+        let paddedVendor = " " + vendor
+        let byVendor = vendorKinds.first { _, keywords in
+            keywords.contains { paddedVendor.contains(" " + $0) }
+        }?.0
+        if let byVendor, byVendor != .computer { return byVendor }
+        
+        if ports.contains(53) { return .server }
+        if !ports.isDisjoint(with: [3389, 445, 139, 548, 5900]) { return .computer }
+        if byVendor == .computer { return .computer }
+        if !ports.isDisjoint(with: [22, 80, 443, 5000, 8080]) { return .server }
+        if vendor.hasPrefix("apple") { return .phone }
+        if host.isPrivateMAC { return .mobilePrivate }
+        return .unknown
+    }
 }
 
 // MARK: - Scanner
@@ -193,6 +326,8 @@ final class NetworkScanner: ObservableObject {
 
     init() {
         refreshInterfaces()
+        // Cargar la base de fabricantes (≈60k entradas) fuera del hilo principal
+        Task.detached(priority: .utility) { _ = OUIDatabase.shared }
         // Cambio de red (Wi-Fi, hotspot, VPN…): volver a leer las interfaces
         pathMonitor.pathUpdateHandler = { [weak self] _ in
             Task { @MainActor in self?.refreshInterfaces() }

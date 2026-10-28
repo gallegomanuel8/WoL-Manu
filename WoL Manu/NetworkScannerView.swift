@@ -56,6 +56,7 @@ struct NetworkScannerView: View {
             $0.ipString.contains(query)
                 || ($0.hostname?.lowercased().contains(query) ?? false)
                 || ($0.mac?.lowercased().contains(query) ?? false)
+                || $0.deviceDescription.lowercased().contains(query)
                 || $0.openPorts.contains { $0.name.lowercased().contains(query) }
         }
         return filtered.sorted(using: sortOrder)
@@ -78,8 +79,8 @@ struct NetworkScannerView: View {
                 table
             }
         }
-        .frame(minWidth: 760, minHeight: 440)
-        .searchable(text: $searchText, placement: .toolbar, prompt: "IP, nombre, MAC o servicio")
+        .frame(minWidth: 900, minHeight: 440)
+        .searchable(text: $searchText, placement: .toolbar, prompt: "IP, nombre, MAC, fabricante o servicio")
         .toolbar {
             ToolbarItem {
                 Button {
@@ -250,6 +251,21 @@ struct NetworkScannerView: View {
             }
             .width(min: 185, ideal: 195)
 
+            TableColumn("Tipo de dispositivo", value: \.deviceSort) { host in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(host.kind.label)
+                        .foregroundStyle(host.kind == .unknown ? .tertiary : .primary)
+                    if let vendor = host.vendor {
+                        Text(vendor)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .lineLimit(1)
+                .help(host.deviceDescription)
+            }
+            .width(min: 150, ideal: 200)
+            
             TableColumn("Latencia", value: \.latencySort) { host in
                 LatencyText(host: host)
             }
@@ -394,6 +410,7 @@ private struct HostDetailView: View {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
                     row("IP", host.ipString)
                     row("MAC", host.mac ?? "No disponible")
+                    row("Fabricante", host.vendor ?? (host.isPrivateMAC ? "Oculto (MAC privada)" : "Desconocido"))
                     if host.isPrivateMAC {
                         row("", "MAC privada (aleatoria)")
                     }

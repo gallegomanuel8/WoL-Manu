@@ -23,7 +23,7 @@ struct WoL_ManuApp: App {
             NetworkScannerView()
                 .environmentObject(configManager)
         }
-        .defaultSize(width: 980, height: 560)
+        .defaultSize(width: 1180, height: 600)
         .commands {
             CommandGroup(after: .windowArrangement) {
                 OpenScannerCommand()
