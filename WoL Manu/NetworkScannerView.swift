@@ -8,6 +8,7 @@ import AppKit
 
 struct NetworkScannerView: View {
     @EnvironmentObject private var configManager: ConfigurationManager
+    @Environment(\.openWindow) private var openWindow
     @StateObject private var scanner = NetworkScanner()
 
     @State private var source: Source = .custom
@@ -18,6 +19,9 @@ struct NetworkScannerView: View {
     @State private var searchText = ""
     @State private var showInspector = true
     @State private var hostPendingWoL: ScannedHost?
+    @State private var onlyNew = false
+    @State private var autoRescan = false
+    @State private var confirmForget = false
 
     enum Source: Hashable {
         case interface(String)
@@ -52,7 +56,8 @@ struct NetworkScannerView: View {
 
     private var rows: [ScannedHost] {
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
-        let filtered = query.isEmpty ? scanner.hosts : scanner.hosts.filter {
+        let base = onlyNew ? scanner.hosts.filter(\.isNew) : scanner.hosts
+        let filtered = query.isEmpty ? base : base.filter {
             $0.ipString.contains(query)
                 || ($0.hostname?.lowercased().contains(query) ?? false)
                 || ($0.mac?.lowercased().contains(query) ?? false)
@@ -80,8 +85,31 @@ struct NetworkScannerView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 440)
+        .confirmationDialog("¿Olvidar todos los dispositivos conocidos?", isPresented: $confirmForget) {
+            Button("Olvidar", role: .destructive) { KnownDevicesStore.shared.forgetAll() }
+        } message: {
+            Text("El próximo escaneo se tomará como nueva referencia y no avisará de ningún dispositivo.")
+        }
+        .task(id: autoRescan) {
+            // Reescaneo periódico mientras la ventana esté abierta (para detectar dispositivos nuevos)
+            guard autoRescan else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(300))
+                if !Task.isCancelled, !scanner.isScanning { startScan() }
+            }
+        }
         .searchable(text: $searchText, placement: .toolbar, prompt: "IP, nombre, MAC, fabricante o servicio")
         .toolbar {
+            ToolbarItem {
+                Menu {
+                    Toggle("Mostrar solo dispositivos nuevos", isOn: $onlyNew)
+                    Toggle("Reescanear cada 5 minutos", isOn: $autoRescan)
+                    Divider()
+                    Button("Olvidar dispositivos conocidos…", role: .destructive) { confirmForget = true }
+                } label: {
+                    Label("Opciones", systemImage: "line.3.horizontal.decrease.circle")
+                }
+            }
             ToolbarItem {
                 Button {
                     showInspector.toggle()
@@ -93,7 +121,9 @@ struct NetworkScannerView: View {
         .inspector(isPresented: $showInspector) {
             Group {
                 if let host = selectedHost {
-                    HostDetailView(host: host, scanner: scanner, onUseForWoL: { hostPendingWoL = host })
+                    HostDetailView(host: host, scanner: scanner,
+                                   onUseForWoL: { hostPendingWoL = host },
+                                   onOpenTools: { openWindow(id: "tools", value: host.ipString) })
                 } else {
                     ContentUnavailableView("Ningún equipo seleccionado", systemImage: "cursorarrow.click",
                                            description: Text("Selecciona un equipo para ver sus detalles."))
@@ -178,6 +208,23 @@ struct NetworkScannerView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                let newCount = scanner.hosts.filter(\.isNew).count
+                if newCount > 0 {
+                    Button {
+                        onlyNew.toggle()
+                    } label: {
+                        Label("\(newCount) nuevo\(newCount == 1 ? "" : "s")", systemImage: "sparkles")
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .help("Mostrar solo los dispositivos nuevos")
+                }
+                if autoRescan {
+                    Label("Auto cada 5 min", systemImage: "clock.arrow.circlepath")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 if let rangeError {
                     Label(rangeError, systemImage: "exclamationmark.triangle")
@@ -226,9 +273,19 @@ struct NetworkScannerView: View {
             .width(24)
 
             TableColumn("IP", value: \.ip) { host in
-                Text(host.ipString).font(.body.monospacedDigit())
+                HStack(spacing: 6) {
+                    Text(host.ipString).font(.body.monospacedDigit())
+                    if host.isNew {
+                        Text("NUEVO")
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(.orange, in: .capsule)
+                            .foregroundStyle(.white)
+                    }
+                }
             }
-            .width(min: 100, ideal: 115)
+            .width(min: 110, ideal: 150)
 
             TableColumn("Nombre", value: \.nameSort) { host in
                 Text(host.hostname ?? "—")
@@ -287,6 +344,7 @@ struct NetworkScannerView: View {
                     Button("Copiar nombre") { copy(name) }
                 }
                 Divider()
+                Button("Ping, traceroute y puertos…") { openWindow(id: "tools", value: host.ipString) }
                 Button("Usar para Wake-on-LAN…") { hostPendingWoL = host }
                     .disabled(host.mac == nil || host.isThisMac)
             }
@@ -390,6 +448,7 @@ private struct HostDetailView: View {
     let host: ScannedHost
     @ObservedObject var scanner: NetworkScanner
     let onUseForWoL: () -> Void
+    let onOpenTools: () -> Void
 
     var body: some View {
         ScrollView {
@@ -416,6 +475,9 @@ private struct HostDetailView: View {
                     }
                     row("Nombre", host.hostname ?? "No resuelto")
                     row("Latencia", host.isThisMac ? "—" : host.latencyMs.map { String(format: "%.1f ms", $0) } ?? "No responde a ping")
+                    if let firstSeen = KnownDevicesStore.shared.firstSeen(host.mac) {
+                        row("Visto desde", host.isNew ? "Ahora (nuevo)" : firstSeen.formatted(date: .abbreviated, time: .shortened))
+                    }
                 }
                 .font(.callout)
 
@@ -444,6 +506,12 @@ private struct HostDetailView: View {
                     }
                 }
 
+                Button(action: onOpenTools) {
+                    Label("Ping, traceroute y puertos", systemImage: "wrench.and.screwdriver")
+                        .frame(maxWidth: .infinity)
+                }
+                .controlSize(.large)
+                
                 if !host.isThisMac {
                     Button(action: onUseForWoL) {
                         Label("Usar para Wake-on-LAN", systemImage: "power")

@@ -152,6 +152,8 @@ nonisolated struct ScannedHost: Identifiable, Hashable, Sendable {
     var openPorts: [OpenPort] = []
     var isThisMac = false
     var isGateway = false
+    /// MAC no vista en ningún escaneo anterior
+    var isNew = false
     
     init(ip: UInt32, mac: String? = nil, hostname: String? = nil, latencyMs: Double? = nil, isThisMac: Bool = false) {
         self.ip = ip
@@ -437,6 +439,16 @@ final class NetworkScanner: ObservableObject {
         }
         guard !Task.isCancelled else { return }
 
+        // 5. Dispositivos nuevos (solo con MAC, es decir, en la red local)
+        if target.interfaceName != nil {
+            let newMACs = KnownDevicesStore.shared.register(Array(found.values))
+            for (ip, host) in found where host.mac.map(newMACs.contains) == true {
+                found[ip]?.isNew = true
+            }
+            publish()
+            KnownDevicesStore.shared.notifyNewDevices(hosts.filter(\.isNew))
+        }
+        
         progress = 1
         phase = .done
         lastScanDate = Date()
@@ -595,7 +607,7 @@ nonisolated enum NetworkProbe {
         return name
     }
 
-    private static func reverseDNS(_ ip: UInt32) async -> String? {
+    static func reverseDNS(_ ip: UInt32) async -> String? {
         await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
                 var addr = sockaddr_in()
@@ -638,7 +650,7 @@ nonisolated enum NetworkProbe {
         }
     }
 
-    private static func isPortOpen(_ ip: UInt32, _ port: UInt16, timeoutMs: Int32) -> Bool {
+    static func isPortOpen(_ ip: UInt32, _ port: UInt16, timeoutMs: Int32) -> Bool {
         let fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
         guard fd >= 0 else { return false }
         defer { close(fd) }
@@ -672,7 +684,7 @@ nonisolated enum NetworkProbe {
 
     // MARK: Process
 
-    private static func run(_ path: String, _ args: [String], timeout: TimeInterval) async -> (Int32, String) {
+    static func run(_ path: String, _ args: [String], timeout: TimeInterval) async -> (Int32, String) {
         await withCheckedContinuation { continuation in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: path)

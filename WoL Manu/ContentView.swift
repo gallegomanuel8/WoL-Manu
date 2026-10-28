@@ -14,6 +14,7 @@ struct ContentView: View {
     @StateObject private var wolService = WakeOnLANService()
 
     @State private var showingConfiguration = false
+    @State private var showingDiagnostics = false
 
     private var config: DeviceConfiguration { configManager.configuration }
 
@@ -46,6 +47,9 @@ struct ContentView: View {
         }
         .onDisappear {
             pingService.stopMonitoring()
+        }
+        .sheet(isPresented: $showingDiagnostics) {
+            DiagnosticsView(configuration: config)
         }
         .sheet(isPresented: $showingConfiguration) {
             ConfigurationView(
@@ -80,6 +84,17 @@ struct ContentView: View {
             }
 
             Spacer()
+
+            Button {
+                showingDiagnostics = true
+            } label: {
+                Image(systemName: "stethoscope")
+                    .font(.title3)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .help("Diagnóstico de conexión")
 
             Button {
                 openWindow(id: "scanner")

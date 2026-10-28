@@ -37,26 +37,31 @@ class WakeOnLANService: ObservableObject {
     /// - Parameters:
     ///   - configuration: Configuración completa del dispositivo y VPN
     func sendWakeOnLAN(configuration: DeviceConfiguration) {
+        Task { await wake(configuration: configuration) }
+    }
+    
+    /// Igual que `sendWakeOnLAN`, pero espera al resultado (Atajos, barra de menú)
+    @discardableResult
+    func wake(configuration: DeviceConfiguration) async -> Bool {
         guard configuration.isValid else {
             let message = "Configuración inválida"
             print("[WoLService] Error: \(message)")
+            lastResult = message
             logResult(method: "Validation", success: false, message: message)
-            return
+            return false
         }
         
         isProcessing = true
         lastSuccess = nil
         lastResult = "Procesando..."
+        defer { isProcessing = false }
         
         if configuration.vpnMode {
-            Task {
-                await sendViaVPN(configuration: configuration)
-                isProcessing = false
-            }
+            await sendViaVPN(configuration: configuration)
         } else {
             sendLocalWakeOnLAN(macAddress: configuration.macAddress, targetIP: configuration.ipAddress)
-            isProcessing = false
         }
+        return lastSuccess ?? false
     }
     
     // MARK: - VPN Mode Implementation

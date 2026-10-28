@@ -12,27 +12,39 @@ struct WoL_ManuApp: App {
     @StateObject private var configManager = ConfigurationManager()
     
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView()
                 .environmentObject(configManager)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
+        .commands {
+            CommandGroup(after: .windowArrangement) {
+                OpenWindowCommands()
+            }
+        }
         
         Window("Analizador de red", id: "scanner") {
             NetworkScannerView()
                 .environmentObject(configManager)
         }
         .defaultSize(width: 1180, height: 600)
-        .commands {
-            CommandGroup(after: .windowArrangement) {
-                OpenScannerCommand()
-            }
+        
+        WindowGroup("Herramientas de red", id: "tools", for: String.self) { $target in
+            NetworkToolsView(initialTarget: target)
+                .environmentObject(configManager)
         }
+        .defaultSize(width: 860, height: 560)
+        
+        MenuBarExtra("WoL Manu", systemImage: "power") {
+            MenuBarView()
+                .environmentObject(configManager)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
 
-private struct OpenScannerCommand: View {
+private struct OpenWindowCommands: View {
     @Environment(\.openWindow) private var openWindow
     
     var body: some View {
@@ -40,5 +52,10 @@ private struct OpenScannerCommand: View {
             openWindow(id: "scanner")
         }
         .keyboardShortcut("n", modifiers: [.command, .shift])
+        
+        Button("Herramientas de red") {
+            openWindow(id: "tools")
+        }
+        .keyboardShortcut("t", modifiers: [.command, .shift])
     }
 }
