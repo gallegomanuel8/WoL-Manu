@@ -4,11 +4,12 @@
 # y, opcionalmente, endurece SSH (solo clave pública).
 #
 # Uso:
-#   scripts/deploy_relay_api_key.sh [usuario@host] [--harden-ssh]
+#   scripts/deploy_relay_api_key.sh [usuario@host] [--harden-ssh] [--only-ssh]
 #
 #   usuario@host   servidor relay (o variable WOL_RELAY_HOST), p. ej. root@192.168.1.10
 #   --harden-ssh   desactiva el acceso SSH por contraseña (PasswordAuthentication no,
 #                  PermitRootLogin prohibit-password). Asegúrate antes de que entras con clave.
+#   --only-ssh     solo el endurecimiento de SSH, sin desplegar el servidor
 #
 # La API key se toma del Llavero de macOS (donde la guarda WoL Manu) o, si aún no se ha
 # migrado, de config.json. Se envía por stdin: no aparece en argumentos ni en `ps`.
@@ -17,9 +18,11 @@ set -euo pipefail
 
 HOST="${WOL_RELAY_HOST:-}"
 HARDEN_SSH=0
+ONLY_SSH=0
 for arg in "$@"; do
     case "$arg" in
         --harden-ssh) HARDEN_SSH=1 ;;
+        --only-ssh) HARDEN_SSH=1; ONLY_SSH=1 ;;
         -h|--help) sed -n '2,15p' "$0"; exit 0 ;;
         *) HOST="$arg" ;;
     esac
@@ -37,6 +40,9 @@ PORT=5000
 REMOTE_DIR=/root/wol-server
 TS="$(date +%Y%m%d-%H%M%S)"
 
+ssh_run() { ssh -o BatchMode=yes "$HOST" "$@"; }
+
+if [[ $ONLY_SSH == 0 ]]; then
 # --- API key -----------------------------------------------------------------
 KEY="$(security find-generic-password -s "xxx.WoL-Manu" -a relay-api-key -w 2>/dev/null || true)"
 if [[ -z "$KEY" ]]; then
@@ -47,8 +53,6 @@ if [[ -z "$KEY" ]]; then
     exit 1
 fi
 echo "🔑 API key encontrada (${#KEY} caracteres)"
-
-ssh_run() { ssh -o BatchMode=yes "$HOST" "$@"; }
 
 # --- 1. Copia de seguridad y subida -------------------------------------------
 echo "📦 Copia de seguridad de $REMOTE_DIR/wol_server.py → wol_server.py.bak-$TS"
@@ -91,27 +95,44 @@ if [[ "$HEALTH" != 200 || "$NOKEY" != 401 || "$WITHKEY" != 400 ]]; then
     exit 1
 fi
 echo "✅ Servidor desplegado: /wake exige API key"
+fi
 
 # --- 4. SSH solo con clave (opcional) -------------------------------------------
+# Los ajustes se insertan al PRINCIPIO de sshd_config: en la sección global gana el primer
+# valor, y no todos los sshd_config incluyen sshd_config.d/. Después se verifica con sshd -T.
 if [[ $HARDEN_SSH == 1 ]]; then
     echo "🛡️  Desactivando acceso SSH por contraseña"
     ssh_run "set -e
-cat > /etc/ssh/sshd_config.d/10-wol-hardening.conf <<'EOF'
-# Solo clave pública (añadido por scripts/deploy_relay_api_key.sh)
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PermitRootLogin prohibit-password
-EOF
-if sshd -t; then
-    systemctl reload ssh
-else
-    rm /etc/ssh/sshd_config.d/10-wol-hardening.conf
-    echo 'Configuración SSH inválida: cambio revertido' >&2
-    exit 1
-fi
-sshd -T | grep -E '^(passwordauthentication|permitrootlogin) '"
+CFG=/etc/ssh/sshd_config
+cp -p \$CFG \$CFG.bak-$TS
+rm -f /etc/ssh/sshd_config.d/10-wol-hardening.conf
+# Quitar un bloque previo de este script (idempotente) e insertar el nuevo arriba
+python3 - \$CFG <<'PY'
+import re, sys
+path = sys.argv[1]
+text = open(path).read()
+text = re.sub(r'(?ms)^# >>> wol-hardening.*?^# <<< wol-hardening\\n', '', text)
+block = ('# >>> wol-hardening (scripts/deploy_relay_api_key.sh)\\n'
+         'PasswordAuthentication no\\n'
+         'KbdInteractiveAuthentication no\\n'
+         'PermitRootLogin prohibit-password\\n'
+         '# <<< wol-hardening\\n')
+open(path, 'w').write(block + text)
+PY
+restore() { cp -p \$CFG.bak-$TS \$CFG; systemctl reload ssh; echo \"\$1: cambio revertido\" >&2; exit 1; }
+sshd -t || restore 'Configuración SSH inválida'
+systemctl reload ssh
+sleep 1
+EFFECTIVE=\$(sshd -T)
+echo \"\$EFFECTIVE\" | grep -E '^(passwordauthentication|permitrootlogin) '
+echo \"\$EFFECTIVE\" | grep -qx 'passwordauthentication no' || restore 'PasswordAuthentication no no se aplica'
+echo \"\$EFFECTIVE\" | grep -qE '^permitrootlogin (without-password|prohibit-password)$' || restore 'PermitRootLogin no se aplica'
+echo \"Copia de seguridad: \$CFG.bak-$TS\""
     # Comprobar que la clave sigue funcionando en una conexión nueva
-    ssh -o BatchMode=yes -o ConnectTimeout=5 "$HOST" true \
-        && echo "✅ SSH con clave sigue funcionando; contraseña desactivada" \
-        || echo "⚠️  No se pudo reconectar con clave: revisa la sesión antes de cerrar ninguna" >&2
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$HOST" true; then
+        echo "✅ Contraseña desactivada (verificado con sshd -T) y SSH con clave sigue funcionando"
+    else
+        echo "⚠️  No se pudo reconectar con clave: NO cierres ninguna sesión abierta y revisa" >&2
+        exit 1
+    fi
 fi
