@@ -33,191 +33,70 @@ struct ConfigurationView: View {
     @State private var showingExportDialog = false
     
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Configuración del Dispositivo")
-                .font(.title2)
-                .fontWeight(.bold)
-                .padding(.top)
-            
-            ScrollView {
-                VStack(alignment: .leading, spacing: 15) {
+        VStack(spacing: 0) {
+            Form {
+                Section {
+                    TextField("Nombre", text: $deviceName, prompt: Text("PC Gaming"))
+                    TextField("Dirección IP", text: $ipAddress, prompt: Text("192.168.1.100"))
+                    TextField("Dirección MAC", text: $macAddress, prompt: Text("AA:BB:CC:DD:EE:FF"))
+                        .font(.body.monospaced())
+                } header: {
+                    Label("Dispositivo", systemImage: "desktopcomputer")
+                }
+                
+                Section {
+                    Toggle("Enviar a través de servidor relay", isOn: $vpnMode.animation())
                     
-                    // Device Configuration Section
-                    Group {
-                        Text("Configuración del Dispositivo")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-                        
-                        // Device Name Field
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Nombre del Equipo")
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            
-                            TextField("Ej: PC Gaming", text: $deviceName)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        // IP Address Field
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Dirección IP")
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            
-                            TextField("Ej: 192.168.1.100", text: $ipAddress)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        // MAC Address Field
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Dirección MAC")
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            
-                            TextField("Ej: AA:BB:CC:DD:EE:FF", text: $macAddress)
-                                .textFieldStyle(.roundedBorder)
-                                .textCase(.uppercase)
-                        }
+                    if vpnMode {
+                        TextField("IP del servidor", text: $serverIP, prompt: Text("192.168.1.200"))
+                        TextField("Puerto", text: $serverPort, prompt: Text("5000"))
+                        SecureField("API Key", text: $apiKey, prompt: Text("Opcional"))
+                        Toggle("Probar en local si el servidor falla", isOn: $fallbackLocal)
                     }
-                    
-                    Divider().padding(.vertical, 8)
-                    
-                    // VPN Configuration Section
-                    Group {
-                        HStack {
-                            Text("Configuración VPN")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                            
-                            Spacer()
-                            
-                            Toggle("", isOn: $vpnMode)
-                                .toggleStyle(SwitchToggleStyle())
-                        }
-                        
-                        if vpnMode {
-                            VStack(alignment: .leading, spacing: 12) {
-                                
-                                // Server IP Field
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("IP del Servidor")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    TextField("Ej: 192.168.1.200", text: $serverIP)
-                                        .textFieldStyle(.roundedBorder)
-                                }
-                                
-                                // Server Port Field
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text("Puerto del Servidor")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    TextField("5000", text: $serverPort)
-                                        .textFieldStyle(.roundedBorder)
-                                }
-                                
-                                // API Key Field
-                                VStack(alignment: .leading, spacing: 5) {
-                                    HStack {
-                                        Text("API Key")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        
-                                        Text("(opcional)")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    SecureField("Clave de autenticación", text: $apiKey)
-                                        .textFieldStyle(.roundedBorder)
-                                }
-                                
-                                // Fallback Option
-                                HStack {
-                                    Toggle("Fallback local si falla VPN", isOn: $fallbackLocal)
-                                        .font(.subheadline)
-                                }
-                            }
-                            .padding(.leading, 8)
-                        }
-                    }
-                    
-                    Divider().padding(.vertical, 8)
-                    
-                    // Import/Export Section
-                    Group {
-                        Text("Configuración")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.secondary)
-                        
-                        HStack(spacing: 10) {
-                            // Import Button
-                            Button(action: {
-                                showingImportDialog = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "square.and.arrow.down")
-                                    Text("Importar")
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.regular)
-                            
-                            // Export Button
-                            Button(action: {
-                                showingExportDialog = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "square.and.arrow.up")
-                                    Text("Exportar")
-                                }
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.regular)
-                            .disabled(!isFormValid)
-                            
-                            Spacer()
-                        }
-                        
-                        Text("Importa o exporta la configuración completa del dispositivo y VPN")
+                } header: {
+                    Label("VPN", systemImage: "lock.shield")
+                } footer: {
+                    if vpnMode {
+                        Text("El fallback local solo se usa si este Mac está en la misma red que el dispositivo.")
                             .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.top, 2)
+                            .foregroundStyle(.secondary)
                     }
-                    
+                }
+                
+                Section {
+                    HStack {
+                        Button("Importar…", systemImage: "square.and.arrow.down") {
+                            showingImportDialog = true
+                        }
+                        Button("Exportar…", systemImage: "square.and.arrow.up") {
+                            showingExportDialog = true
+                        }
+                        .disabled(!isFormValid)
+                    }
+                } header: {
+                    Label("Archivo", systemImage: "doc")
                 }
             }
-            .padding(.horizontal)
+            .formStyle(.grouped)
             
-            Spacer()
-            
-            // Buttons
-            HStack(spacing: 15) {
-                
-                // Cancel Button
-                Button("Cancelar") {
+            HStack {
+                Spacer()
+                Button("Cancelar", role: .cancel) {
                     dismiss()
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .keyboardShortcut(.cancelAction)
                 
-                // Save Button
                 Button("Guardar") {
                     saveConfiguration()
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
                 .disabled(!isFormValid)
             }
-            .padding(.horizontal)
-            .padding(.bottom)
+            .controlSize(.large)
+            .padding()
         }
-        .frame(width: 420, height: vpnMode ? 660 : 480)
+        .frame(width: 440, height: vpnMode ? 600 : 440)
         .onAppear {
             loadCurrentConfiguration()
         }

@@ -6,182 +6,45 @@
 //
 
 import SwiftUI
-import Network
 
 struct ContentView: View {
     @StateObject private var configManager = ConfigurationManager()
     @StateObject private var pingService = PingService()
     @StateObject private var wolService = WakeOnLANService()
-    
+
     @State private var showingConfiguration = false
-    @State private var showingWakeAlert = false
-    @State private var wakeAlertMessage = ""
-    
+
+    private var config: DeviceConfiguration { configManager.configuration }
+
     var body: some View {
-        VStack(spacing: 30) {
-            
-            // App Title
-            VStack(spacing: 5) {
-                Image(systemName: "network")
-                    .font(.system(size: 40))
-                    .foregroundColor(.blue)
-                
-                Text("Wake-on-LAN")
-                    .font(.title)
-                    .fontWeight(.bold)
+        VStack(spacing: 0) {
+            header
+
+            Spacer(minLength: 16)
+
+            PowerButton(
+                status: pingService.deviceStatus,
+                isProcessing: wolService.isProcessing,
+                isEnabled: config.isValid
+            ) {
+                wolService.sendWakeOnLAN(configuration: config)
             }
-            .padding(.top)
-            
-            // Device Info Card
-            GroupBox {
-                VStack(spacing: 15) {
-                    
-                    // Device Name or Placeholder
-                    HStack {
-                        Text("Dispositivo:")
-                            .fontWeight(.medium)
-                        Spacer()
-                        Text(configManager.configuration.deviceName.isEmpty ? "No configurado" : configManager.configuration.deviceName)
-                            .foregroundColor(configManager.configuration.deviceName.isEmpty ? .secondary : .primary)
-                    }
-                    
-                    // IP Address
-                    HStack {
-                        Text("IP:")
-                            .fontWeight(.medium)
-                        Spacer()
-                        Text(configManager.configuration.ipAddress.isEmpty ? "No configurado" : configManager.configuration.ipAddress)
-                            .foregroundColor(configManager.configuration.ipAddress.isEmpty ? .secondary : .primary)
-                    }
-                    
-                    Divider()
-                    
-                    // Status Indicator
-                    HStack {
-                        Text("Estado:")
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(pingService.deviceStatus.color)
-                                .frame(width: 12, height: 12)
-                            
-                            Text(pingService.deviceStatus.description)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    // VPN Mode Indicator
-                    if configManager.configuration.vpnMode {
-                        HStack {
-                            Text("Modo:")
-                                .fontWeight(.medium)
-                            
-                            Spacer()
-                            
-                            HStack(spacing: 6) {
-                                Image(systemName: "network.badge.shield.half.filled")
-                                    .foregroundColor(.blue)
-                                    .font(.caption)
-                                
-                                Text("VPN (\(configManager.configuration.serverIP))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    
-                    // Last WoL Result
-                    if !wolService.lastResult.isEmpty {
-                        HStack {
-                            Text("Último envío:")
-                                .fontWeight(.medium)
-                            
-                            Spacer()
-                            
-                            HStack(spacing: 6) {
-                                if wolService.isProcessing {
-                                    ProgressView()
-                                        .scaleEffect(0.7)
-                                } else {
-                                    Image(systemName: wolService.lastResult.contains("Error") ? "xmark.circle.fill" : "checkmark.circle.fill")
-                                        .foregroundColor(wolService.lastResult.contains("Error") ? .red : .green)
-                                        .font(.caption)
-                                }
-                                
-                                Text(wolService.lastResult)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(2)
-                            }
-                        }
-                    }
-                }
-                .padding(.vertical, 8)
-            } label: {
-                Text("Información del Dispositivo")
-                    .font(.headline)
-            }
-            .padding(.horizontal)
-            
-            Spacer()
-            
-            // Action Buttons
-            VStack(spacing: 15) {
-                
-                // Wake Up Button
-                Button(action: {
-                    sendWakeOnLANPacket()
-                }) {
-                    if wolService.isProcessing {
-                        HStack {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text("Enviando...")
-                        }
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                    } else {
-                        Label("Encender", systemImage: "power")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!configManager.configuration.isValid || wolService.isProcessing)
-                
-                // Configuration Button
-                Button(action: {
-                    showingConfiguration = true
-                }) {
-                    Label("Configuración", systemImage: "gear")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 45)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
-            .padding(.horizontal)
-            .padding(.bottom)
+
+            StatusPill(status: pingService.deviceStatus)
+                .padding(.top, 22)
+
+            Spacer(minLength: 16)
+
+            footer
         }
-        .frame(width: 350, height: 500)
+        .padding(20)
+        .frame(width: 340, height: 500)
+        .background(BackgroundGradient(status: pingService.deviceStatus))
         .onAppear {
-            setupServices()
+            updatePingService()
         }
         .onDisappear {
-            print("[ContentView] View disappearing, cleaning up services")
             pingService.stopMonitoring()
-            // El WakeOnLANService se limpiará automáticamente en su deinit
         }
         .sheet(isPresented: $showingConfiguration) {
             ConfigurationView(
@@ -189,47 +52,245 @@ struct ContentView: View {
                 pingService: pingService
             )
         }
-        .alert("Wake-on-LAN", isPresented: $showingWakeAlert) {
-            Button("OK") { }
-        } message: {
-            Text(wakeAlertMessage)
-        }
-        .onChange(of: configManager.configuration.ipAddress) { _ in
+        .onChange(of: config.ipAddress) {
             updatePingService()
         }
     }
-    
-    // MARK: - Service Management
-    
-    private func setupServices() {
-        if configManager.configuration.isValid {
-            pingService.startMonitoring(ipAddress: configManager.configuration.ipAddress)
+
+    // MARK: - Sections
+
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(config.deviceName.isEmpty ? "Sin configurar" : config.deviceName)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(config.deviceName.isEmpty ? .secondary : .primary)
+
+                if !config.ipAddress.isEmpty {
+                    Text(config.ipAddress)
+                        .font(.callout.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                if !config.macAddress.isEmpty {
+                    Text(config.macAddress)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                showingConfiguration = true
+            } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.title3)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .help("Configuración")
         }
     }
-    
+
+    private var footer: some View {
+        VStack(spacing: 10) {
+            ModeChip(configuration: config)
+
+            if !wolService.lastResult.isEmpty {
+                ResultBanner(
+                    message: wolService.lastResult,
+                    success: wolService.lastSuccess,
+                    isProcessing: wolService.isProcessing
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.smooth, value: wolService.lastResult)
+    }
+
+    // MARK: - Service Management
+
     private func updatePingService() {
-        if configManager.configuration.isValid {
-            pingService.startMonitoring(ipAddress: configManager.configuration.ipAddress)
+        if config.isValid {
+            pingService.startMonitoring(ipAddress: config.ipAddress)
         } else {
             pingService.stopMonitoring()
         }
     }
-    
-    // MARK: - Wake-on-LAN Action
-    
-    private func sendWakeOnLANPacket() {
-        guard configManager.configuration.isValid else {
-            wakeAlertMessage = "Por favor, configura el dispositivo primero."
-            showingWakeAlert = true
-            return
+}
+
+// MARK: - Power Button
+
+private struct PowerButton: View {
+    let status: DeviceStatus
+    let isProcessing: Bool
+    let isEnabled: Bool
+    let action: () -> Void
+
+    @State private var pulse = false
+    @State private var isHovering = false
+
+    private var tint: Color {
+        status == .online ? .green : .accentColor
+    }
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                // Halo
+                Circle()
+                    .fill(tint.opacity(isEnabled ? 0.35 : 0))
+                    .blur(radius: 30)
+                    .scaleEffect(isHovering ? 1.1 : 0.95)
+
+                // Ondas mientras se envía
+                if isProcessing {
+                    ForEach(0..<2) { i in
+                        Circle()
+                            .stroke(tint.opacity(0.6), lineWidth: 2)
+                            .scaleEffect(pulse ? 1.6 : 1)
+                            .opacity(pulse ? 0 : 1)
+                            .animation(
+                                .easeOut(duration: 1.4).repeatForever(autoreverses: false).delay(Double(i) * 0.7),
+                                value: pulse
+                            )
+                    }
+                }
+
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [tint.mix(with: .white, by: 0.15), tint.mix(with: .black, by: 0.25)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+                    .shadow(color: tint.opacity(0.5), radius: 16, y: 8)
+
+                Image(systemName: "power")
+                    .font(.system(size: 54, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .symbolEffect(.pulse, isActive: isProcessing)
+            }
+            .frame(width: 150, height: 150)
+            .contentShape(Circle())
         }
-        
-        // Usar el nuevo método dual (local/VPN)
-        wolService.sendWakeOnLAN(configuration: configManager.configuration)
-        
-        let method = configManager.configuration.vpnMode ? "servidor VPN" : "red local"
-        wakeAlertMessage = "Enviando Wake-on-LAN vía \(method) a \(configManager.configuration.deviceName)"
-        showingWakeAlert = true
+        .buttonStyle(PressableStyle())
+        .disabled(!isEnabled || isProcessing)
+        .saturation(isEnabled ? 1 : 0)
+        .opacity(isEnabled ? 1 : 0.5)
+        .onHover { hovering in
+            withAnimation(.smooth) { isHovering = hovering }
+        }
+        .onChange(of: isProcessing) { _, processing in
+            pulse = processing
+        }
+        .help(isEnabled ? "Encender equipo" : "Configura el dispositivo primero")
+        .accessibilityLabel("Encender")
+    }
+}
+
+private struct PressableStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(.spring(duration: 0.25), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Status & Mode
+
+private struct StatusPill: View {
+    let status: DeviceStatus
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(status.color)
+                .frame(width: 8, height: 8)
+                .shadow(color: status.color, radius: status == .online ? 4 : 0)
+            Text(status.description)
+                .font(.callout.weight(.medium))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .glassEffect(.regular, in: .capsule)
+        .animation(.smooth, value: status)
+    }
+}
+
+private struct ModeChip: View {
+    let configuration: DeviceConfiguration
+
+    var body: some View {
+        Label {
+            if configuration.vpnMode {
+                Text("VPN · \(configuration.serverIP):\(String(configuration.serverPort))")
+                    .monospacedDigit()
+            } else {
+                Text("Red local")
+            }
+        } icon: {
+            Image(systemName: configuration.vpnMode ? "lock.shield.fill" : "wifi")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+}
+
+private struct ResultBanner: View {
+    let message: String
+    let success: Bool?
+    let isProcessing: Bool
+
+    private var color: Color {
+        switch success {
+        case .some(true): .green
+        case .some(false): .red
+        case .none: .secondary
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if isProcessing {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Image(systemName: success == true ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(color)
+            }
+            Text(message)
+                .font(.callout)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .glassEffect(.regular.tint(color.opacity(0.12)), in: .rect(cornerRadius: 14))
+    }
+}
+
+// MARK: - Background
+
+private struct BackgroundGradient: View {
+    let status: DeviceStatus
+
+    var body: some View {
+        ZStack {
+            Color(nsColor: .windowBackgroundColor)
+            RadialGradient(
+                colors: [(status == .online ? Color.green : .accentColor).opacity(0.18), .clear],
+                center: .center,
+                startRadius: 10,
+                endRadius: 320
+            )
+        }
+        .ignoresSafeArea()
+        .animation(.smooth(duration: 0.6), value: status)
     }
 }
 

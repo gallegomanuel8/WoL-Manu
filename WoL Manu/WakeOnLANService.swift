@@ -25,6 +25,7 @@ class WakeOnLANService: ObservableObject {
     // MARK: - Published Properties
     @Published var isProcessing = false
     @Published var lastResult: String = ""
+    @Published var lastSuccess: Bool?
     
     // MARK: - Private Properties
     private var logHistory: [WoLLogEntry] = []
@@ -44,52 +45,53 @@ class WakeOnLANService: ObservableObject {
         }
         
         isProcessing = true
+        lastSuccess = nil
         lastResult = "Procesando..."
         
         if configuration.vpnMode {
-            sendViaVPN(configuration: configuration)
+            Task {
+                await sendViaVPN(configuration: configuration)
+                isProcessing = false
+            }
         } else {
             sendLocalWakeOnLAN(macAddress: configuration.macAddress, targetIP: configuration.ipAddress)
+            isProcessing = false
         }
-        
-        isProcessing = false
     }
     
     // MARK: - VPN Mode Implementation
     
-    private func sendViaVPN(configuration: DeviceConfiguration) {
+    private func sendViaVPN(configuration: DeviceConfiguration) async {
         print("[WoLService] Modo VPN activado - enviando vía servidor \(configuration.serverIP):\(configuration.serverPort)")
         
-        Task {
-            do {
-                // 1. Health Check
-                let healthOK = try await performHealthCheck(configuration: configuration)
-                guard healthOK else {
-                    let message = "Health check fallido"
-                    await MainActor.run {
-                        handleVPNFailure(configuration: configuration, message: message)
-                    }
-                    return
-                }
-                
-                // 2. Send WoL Request
-                let success = try await sendWoLRequest(configuration: configuration)
-                
+        do {
+            // 1. Health Check
+            let healthOK = try await performHealthCheck(configuration: configuration)
+            guard healthOK else {
+                let message = "Health check fallido"
                 await MainActor.run {
-                    if success {
-                        let message = "Wake-on-LAN enviado vía servidor"
-                        print("[WoLService] \(message)")
-                        lastResult = message
-                        logResult(method: "VPN", success: true, message: message, httpCode: 200)
-                    } else {
-                        handleVPNFailure(configuration: configuration, message: "Error en petición al servidor")
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    let message = "Error de conexión: \(error.localizedDescription)"
                     handleVPNFailure(configuration: configuration, message: message)
                 }
+                return
+            }
+            
+            // 2. Send WoL Request
+            let success = try await sendWoLRequest(configuration: configuration)
+            
+            await MainActor.run {
+                if success {
+                    let message = "Wake-on-LAN enviado vía servidor"
+                    print("[WoLService] \(message)")
+                    lastResult = message
+                    logResult(method: "VPN", success: true, message: message, httpCode: 200)
+                } else {
+                    handleVPNFailure(configuration: configuration, message: "Error en petición al servidor")
+                }
+            }
+        } catch {
+            await MainActor.run {
+                let message = "Error de conexión: \(error.localizedDescription)"
+                handleVPNFailure(configuration: configuration, message: message)
             }
         }
     }
@@ -124,7 +126,7 @@ class WakeOnLANService: ObservableObject {
             if httpResponse.statusCode == 200 {
                 if let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let status = jsonResponse["status"] as? String,
-                   status == "ok" {
+                   ["ok", "healthy"].contains(status) {
                     print("[WoLService] Health check OK - servidor responde correctamente")
                     return true
                 }
@@ -142,7 +144,7 @@ class WakeOnLANService: ObservableObject {
     }
     
     private func sendWoLRequest(configuration: DeviceConfiguration) async throws -> Bool {
-        let url = URL(string: "http://\(configuration.serverIP):\(configuration.serverPort)/wol")!
+        let url = URL(string: "http://\(configuration.serverIP):\(configuration.serverPort)/wake")!
         
         // MEJORA #5: URLSession con configuración optimizada
         let sessionConfig = URLSessionConfiguration.default
@@ -195,7 +197,7 @@ class WakeOnLANService: ObservableObject {
                     if httpCode == 200 {
                         if let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                            let status = jsonResponse["status"] as? String,
-                           status == "sent" {
+                           ["sent", "success"].contains(status) {
                             return true
                         }
                     }
@@ -231,8 +233,8 @@ class WakeOnLANService: ObservableObject {
                     
                 case 500...599:
                     let message = "Error de servidor: \(httpCode)"
-                    print("[WoLService] \(message) - Intento \(attempt)/3")
-                    if attempt == 3 {
+                    print("[WoLService] \(message) - Intento \(attempt)/\(maxRetries)")
+                    if attempt == maxRetries {
                         await MainActor.run {
                             logResult(method: "VPN", success: false, message: message, httpCode: httpCode)
                         }
@@ -281,11 +283,29 @@ class WakeOnLANService: ObservableObject {
         lastResult = "Error VPN: \(message)"
         logResult(method: "VPN", success: false, message: message)
         
-        if configuration.fallbackLocal {
+        if configuration.fallbackLocal && isOnTargetSubnet(configuration.ipAddress) {
             print("[WoLService] Usando fallback local")
             lastResult = "VPN falló - usando método local"
             sendLocalWakeOnLAN(macAddress: configuration.macAddress, targetIP: configuration.ipAddress)
         }
+    }
+    
+    /// Indica si alguna interfaz local está en la misma /24 que el dispositivo destino.
+    /// Si no lo está (p. ej. conectado por WireGuard), el broadcast local nunca llegaría.
+    private func isOnTargetSubnet(_ targetIP: String) -> Bool {
+        let prefix = targetIP.split(separator: ".").prefix(3).joined(separator: ".") + "."
+        guard prefix.count > 1 else { return false }
+
+        var ifaddrPtr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddrPtr) == 0, let first = ifaddrPtr else { return false }
+        defer { freeifaddrs(ifaddrPtr) }
+
+        for ptr in sequence(first: first, next: { $0.pointee.ifa_next }) {
+            guard ptr.pointee.ifa_addr?.pointee.sa_family == sa_family_t(AF_INET),
+                  let addr = ptr.pointee.ifa_addr?.withMemoryRebound(to: sockaddr_in.self, capacity: 1, { $0.pointee.sin_addr }) else { continue }
+            if string(from: addr).hasPrefix(prefix) { return true }
+        }
+        return false
     }
     
     // MARK: - Local WoL Implementation
@@ -348,6 +368,7 @@ class WakeOnLANService: ObservableObject {
             message: message,
             httpCode: httpCode
         )
+        lastSuccess = success
         
         logHistory.append(entry)
         if logHistory.count > maxLogEntries {
