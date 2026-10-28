@@ -33,35 +33,38 @@ nonisolated enum IPv4 {
         prefix <= 0 ? 0 : UInt32.max << UInt32(32 - min(prefix, 32))
     }
 
-    /// "192.168.3.0/24" o "192.168.3.7" (se asume /24)
-    static func parseCIDR(_ s: String) -> (network: UInt32, prefix: Int)? {
-        let parts = s.trimmingCharacters(in: .whitespaces).split(separator: "/")
-        guard let first = parts.first, let ip = parse(String(first)) else { return nil }
-        let prefix = parts.count > 1 ? Int(parts[1]) ?? -1 : 24
-        guard (16...30).contains(prefix) else { return nil }
-        return (ip & mask(prefix: prefix), prefix)
+    /// Rango "desde–hasta". `to` puede ser una IP completa o solo el último octeto ("50").
+    static func parseRange(from: String, to: String) -> (first: UInt32, last: UInt32)? {
+        guard let first = parse(from.trimmingCharacters(in: .whitespaces)) else { return nil }
+        let toText = to.trimmingCharacters(in: .whitespaces)
+        let last: UInt32
+        if let full = parse(toText) {
+            last = full
+        } else if let octet = UInt32(toText), octet <= 255 {
+            last = first & 0xFFFF_FF00 | octet
+        } else {
+            return nil
+        }
+        return (first, last)
     }
 }
 
 // MARK: - Models
 
 nonisolated struct ScanTarget: Hashable, Sendable {
-    let network: UInt32
-    let prefix: Int
+    static let maxHosts = 4096
+    
+    let first: UInt32
+    let last: UInt32
+    let label: String
     let interfaceName: String?
     let localAddress: UInt32?
     let localMAC: String?
-
-    var cidr: String { "\(IPv4.string(network))/\(prefix)" }
-    var mask: UInt32 { IPv4.mask(prefix: prefix) }
-
-    var hosts: [UInt32] {
-        let broadcast = network | ~mask
-        guard broadcast > network + 1 else { return [] }
-        return Array((network + 1)..<broadcast)
-    }
-
-    func contains(_ ip: UInt32) -> Bool { ip & mask == network }
+    
+    var count: Int { first <= last ? Int(last - first) + 1 : 0 }
+    var hosts: [UInt32] { first <= last ? Array(first...last) : [] }
+    
+    func contains(_ ip: UInt32) -> Bool { first <= ip && ip <= last }
 }
 
 nonisolated struct NetworkInterfaceInfo: Identifiable, Hashable, Sendable {
@@ -78,9 +81,14 @@ nonisolated struct NetworkInterfaceInfo: Identifiable, Hashable, Sendable {
     /// Redes mayores de /22 se limitan a la /24 propia para que el escaneo sea razonable
     var target: ScanTarget {
         let p = max(prefix, prefix < 22 ? 24 : prefix)
-        return ScanTarget(network: address & IPv4.mask(prefix: p), prefix: p,
+        let mask = IPv4.mask(prefix: p)
+        let network = address & mask
+        return ScanTarget(first: network + 1, last: (network | ~mask) - 1,
+                          label: "\(IPv4.string(network))/\(p)",
                           interfaceName: name, localAddress: address, localMAC: mac)
     }
+    
+    func contains(_ ip: UInt32) -> Bool { ip & netmask == address & netmask }
 }
 
 nonisolated struct OpenPort: Hashable, Sendable {

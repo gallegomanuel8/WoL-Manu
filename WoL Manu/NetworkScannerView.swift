@@ -11,7 +11,8 @@ struct NetworkScannerView: View {
     @StateObject private var scanner = NetworkScanner()
 
     @State private var source: Source = .custom
-    @State private var customRange = ""
+    @State private var rangeFrom = ""
+    @State private var rangeTo = ""
     @State private var selection: ScannedHost.ID?
     @State private var sortOrder = [KeyPathComparator(\ScannedHost.ip)]
     @State private var searchText = ""
@@ -30,12 +31,23 @@ struct NetworkScannerView: View {
         case .interface(let name):
             return scanner.interfaces.first { $0.name == name }?.target
         case .custom:
-            guard let parsed = IPv4.parseCIDR(customRange) else { return nil }
-            // Si el rango coincide con una interfaz local, usarla para leer la tabla ARP
-            let iface = scanner.interfaces.first { !$0.isTunnel && parsed.network == $0.address & IPv4.mask(prefix: parsed.prefix) }
-            return ScanTarget(network: parsed.network, prefix: parsed.prefix,
-                              interfaceName: iface?.name, localAddress: iface?.address, localMAC: iface?.mac)
+            guard rangeError == nil, let r = IPv4.parseRange(from: rangeFrom, to: rangeTo) else { return nil }
+            // Si el rango cae dentro de una red local, usar esa interfaz (MAC propia, "Este Mac")
+            let iface = scanner.interfaces.first { !$0.isTunnel && $0.contains(r.first) && $0.contains(r.last) }
+            let local = iface.flatMap { r.first...r.last ~= $0.address ? $0 : nil }
+            return ScanTarget(first: r.first, last: r.last,
+                              label: "\(IPv4.string(r.first)) – \(IPv4.string(r.last))",
+                              interfaceName: iface?.name, localAddress: local?.address, localMAC: local?.mac)
         }
+    }
+    
+    /// Motivo por el que el rango no es válido (nil si lo es o si aún está vacío)
+    private var rangeError: String? {
+        guard source == .custom, !rangeFrom.isEmpty, !rangeTo.isEmpty else { return nil }
+        guard let r = IPv4.parseRange(from: rangeFrom, to: rangeTo) else { return "IP no válida" }
+        guard r.first <= r.last else { return "«Desde» debe ser menor que «Hasta»" }
+        guard Int(r.last - r.first) < ScanTarget.maxHosts else { return "Máximo \(ScanTarget.maxHosts) direcciones" }
+        return nil
     }
 
     private var rows: [ScannedHost] {
@@ -99,9 +111,10 @@ struct NetworkScannerView: View {
         }
         .onAppear(perform: chooseDefaultSource)
         .onChange(of: scanner.interfaces) {
-            // La interfaz elegida ha desaparecido o el equipo destino vuelve a estar en una red local
-            if case .interface(let name) = source, scanner.interfaces.contains(where: { $0.name == name }) { return }
-            chooseDefaultSource()
+            // Solo si la interfaz elegida ha desaparecido; un rango escrito a mano se respeta
+            if case .interface(let name) = source, !scanner.interfaces.contains(where: { $0.name == name }) {
+                chooseDefaultSource()
+            }
         }
     }
 
@@ -112,21 +125,28 @@ struct NetworkScannerView: View {
             HStack(spacing: 10) {
                 Picker("Red", selection: $source) {
                     ForEach(scanner.interfaces) { iface in
-                        Text("\(iface.name) · \(iface.target.cidr)\(iface.isTunnel ? " (VPN)" : "")")
+                        Text("\(iface.name) · \(iface.target.label)\(iface.isTunnel ? " (VPN)" : "")")
                             .tag(Source.interface(iface.name))
                     }
                     Divider()
-                    Text("Rango personalizado").tag(Source.custom)
+                    Text("Rango de IPs").tag(Source.custom)
                 }
                 .labelsHidden()
                 .frame(maxWidth: 260)
 
                 if source == .custom {
-                    TextField("192.168.1.0/24", text: $customRange)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.body.monospaced())
-                        .frame(width: 160)
-                        .onSubmit(startScan)
+                    HStack(spacing: 6) {
+                        TextField("Desde", text: $rangeFrom, prompt: Text("192.168.1.1"))
+                            .frame(width: 130)
+                        Image(systemName: "arrow.right")
+                            .foregroundStyle(.secondary)
+                        TextField("Hasta", text: $rangeTo, prompt: Text("192.168.1.254"))
+                            .frame(width: 130)
+                            .help("IP completa o solo el último número (p. ej. 50)")
+                    }
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.monospaced())
+                    .onSubmit(startScan)
                 }
 
                 Button {
@@ -158,6 +178,16 @@ struct NetworkScannerView: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                 Spacer()
+                if let rangeError {
+                    Label(rangeError, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                } else if let target, source == .custom {
+                    Text("\(target.count) direcciones")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
                 if target?.interfaceName == nil, target != nil {
                     Label("Fuera de la red local: sin MAC (ARP no cruza la VPN)", systemImage: "info.circle")
                         .font(.caption)
@@ -175,7 +205,7 @@ struct NetworkScannerView: View {
             parts.append("\(scanner.hosts.count) equipos")
         }
         if let t = scanner.lastTarget {
-            parts.append(t.cidr)
+            parts.append(t.label)
         }
         if scanner.phase == .done, let date = scanner.lastScanDate {
             parts.append(date.formatted(date: .omitted, time: .shortened))
@@ -274,13 +304,15 @@ struct NetworkScannerView: View {
     // MARK: Actions
 
     private func chooseDefaultSource() {
-        customRange = {
-            let ip = configManager.configuration.ipAddress
-            guard let parsed = IPv4.parseCIDR(ip) else { return "192.168.1.0/24" }
-            return "\(IPv4.string(parsed.network))/\(parsed.prefix)"
-        }()
-        // Preferir la interfaz que esté en la red del dispositivo; si no (p. ej. por VPN), su /24 como rango
-        if let iface = scanner.interfaces.first(where: { $0.target.cidr == customRange }) {
+        let deviceIP = IPv4.parse(configManager.configuration.ipAddress)
+        // Rango por defecto: la /24 del dispositivo WoL (sin pisar lo que haya escrito el usuario)
+        if rangeFrom.isEmpty, rangeTo.isEmpty {
+            let base = (deviceIP ?? IPv4.parse("192.168.1.0")!) & 0xFFFF_FF00
+            rangeFrom = IPv4.string(base | 1)
+            rangeTo = IPv4.string(base | 254)
+        }
+        // Preferir la interfaz que esté en la red del dispositivo; si no (p. ej. por VPN), el rango
+        if let deviceIP, let iface = scanner.interfaces.first(where: { !$0.isTunnel && $0.contains(deviceIP) }) {
             source = .interface(iface.name)
         } else {
             source = .custom
