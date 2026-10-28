@@ -9,6 +9,7 @@
 import Foundation
 import Darwin
 import Combine
+import Network
 
 // MARK: - IPv4 helpers
 
@@ -178,11 +179,21 @@ final class NetworkScanner: ObservableObject {
 
     private var scanTask: Task<Void, Never>?
     private var found: [UInt32: ScannedHost] = [:]
+    private let pathMonitor = NWPathMonitor()
 
     var isScanning: Bool { [.discovering, .resolving, .probingPorts].contains(phase) }
 
     init() {
         refreshInterfaces()
+        // Cambio de red (Wi-Fi, hotspot, VPN…): volver a leer las interfaces
+        pathMonitor.pathUpdateHandler = { [weak self] _ in
+            Task { @MainActor in self?.refreshInterfaces() }
+        }
+        pathMonitor.start(queue: .global(qos: .utility))
+    }
+    
+    deinit {
+        pathMonitor.cancel()
     }
 
     func refreshInterfaces() {
@@ -251,11 +262,10 @@ final class NetworkScanner: ObservableObject {
         }
         guard !Task.isCancelled else { return }
 
-        // 2. Tabla ARP: MAC de los que respondieron y de los que bloquean ICMP (p. ej. Windows)
-        if let iface = target.interfaceName {
-            for (ip, mac) in await NetworkProbe.arpTable(interface: iface) where target.contains(ip) {
-                found[ip, default: ScannedHost(ip: ip)].mac = mac
-            }
+        // 2. Tabla ARP: MAC de los que respondieron y de los que bloquean ICMP (p. ej. Windows).
+        //    Se filtra por rango, no por interfaz, para no depender de la detección de interfaces.
+        for (ip, mac) in NetworkProbe.arpTable() where target.contains(ip) && ip != target.localAddress {
+            found[ip, default: ScannedHost(ip: ip)].mac = mac
         }
         if let gateway, found[gateway] != nil {
             found[gateway]?.isGateway = true
@@ -382,22 +392,43 @@ nonisolated enum NetworkProbe {
         return Double(output[range].dropFirst(5))
     }
 
-    static func arpTable(interface: String) async -> [UInt32: String] {
-        let (_, output) = await run("/usr/sbin/arp", ["-an", "-i", interface], timeout: 5)
+    /// Tabla ARP leída en el propio proceso vía sysctl. Lanzar `arp` no sirve: macOS oculta
+    /// la tabla a los procesos hijos de una app sin permiso de Red Local y devuelve vacío.
+    static func arpTable() -> [UInt32: String] {
+        var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS, RTF_LLINFO]
+        var len = 0
+        guard sysctl(&mib, 6, nil, &len, nil, 0) == 0, len > 0 else { return [:] }
+        var buf = [UInt8](repeating: 0, count: len)
+        guard sysctl(&mib, 6, &buf, &len, nil, 0) == 0 else { return [:] }
+        
+        // Los sockaddr van alineados a 4 bytes tras cada rt_msghdr
+        func roundup(_ a: Int) -> Int { a > 0 ? 1 + ((a - 1) | 3) : 4 }
+        
         var table: [UInt32: String] = [:]
-        let regex = #/\((\d+\.\d+\.\d+\.\d+)\) at ([0-9a-fA-F:]+) on/#
-        for line in output.split(separator: "\n") {
-            guard let m = line.firstMatch(of: regex), let ip = IPv4.parse(String(m.1)) else { continue }
-            let octets = m.2.split(separator: ":").map { $0.count == 1 ? "0\($0)" : String($0) }
-            guard octets.count == 6 else { continue }
-            let mac = octets.joined(separator: ":").uppercased()
-            // Broadcast y multicast no son equipos
-            if mac == "FF:FF:FF:FF:FF:FF" || mac.hasPrefix("01:00:5E") { continue }
-            table[ip] = mac
+        buf.withUnsafeBytes { raw in
+            var offset = 0
+            while offset + MemoryLayout<rt_msghdr>.size <= len {
+                let msglen = Int(raw.loadUnaligned(fromByteOffset: offset, as: rt_msghdr.self).rtm_msglen)
+                guard msglen > 0 else { break }
+                defer { offset += msglen }
+                
+                let sinOff = offset + MemoryLayout<rt_msghdr>.size
+                let sin = raw.loadUnaligned(fromByteOffset: sinOff, as: sockaddr_in.self)
+                let sdlOff = sinOff + roundup(Int(sin.sin_len))
+                guard sdlOff + MemoryLayout<sockaddr_dl>.size <= offset + msglen else { continue }
+                let sdl = raw.loadUnaligned(fromByteOffset: sdlOff, as: sockaddr_dl.self)
+                guard sdl.sdl_alen == 6 else { continue }  // entradas incompletas
+                
+                let macOff = sdlOff + MemoryLayout<sockaddr_dl>.offset(of: \.sdl_data)! + Int(sdl.sdl_nlen)
+                let mac = (0..<6).map { String(format: "%02X", raw[macOff + $0]) }.joined(separator: ":")
+                // Broadcast y multicast no son equipos
+                if mac == "FF:FF:FF:FF:FF:FF" || mac.hasPrefix("01:00:5E") { continue }
+                table[UInt32(bigEndian: sin.sin_addr.s_addr)] = mac
+            }
         }
         return table
     }
-
+    
     static func defaultGateway() async -> UInt32? {
         let (_, output) = await run("/sbin/route", ["-n", "get", "default"], timeout: 3)
         guard let m = output.firstMatch(of: #/gateway: (\d+\.\d+\.\d+\.\d+)/#) else { return nil }
@@ -506,9 +537,14 @@ nonisolated enum NetworkProbe {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = FileHandle.nullDevice
+            // Leer mientras el proceso escribe: si la salida supera el buffer del pipe
+            // (p. ej. `arp -an` tras un barrido), esperar al final lo bloquearía.
+            let reader = Task.detached { pipe.fileHandleForReading.readDataToEndOfFile() }
             process.terminationHandler = { proc in
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                continuation.resume(returning: (proc.terminationStatus, String(decoding: data, as: UTF8.self)))
+                Task {
+                    let data = await reader.value
+                    continuation.resume(returning: (proc.terminationStatus, String(decoding: data, as: UTF8.self)))
+                }
             }
             do {
                 try process.run()

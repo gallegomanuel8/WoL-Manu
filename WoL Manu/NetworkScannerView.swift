@@ -98,6 +98,11 @@ struct NetworkScannerView: View {
             Text("Se sustituirá el dispositivo configurado (\(configManager.configuration.deviceName)) por \(host.ipString) · \(host.mac ?? "")")
         }
         .onAppear(perform: chooseDefaultSource)
+        .onChange(of: scanner.interfaces) {
+            // La interfaz elegida ha desaparecido o el equipo destino vuelve a estar en una red local
+            if case .interface(let name) = source, scanner.interfaces.contains(where: { $0.name == name }) { return }
+            chooseDefaultSource()
+        }
     }
 
     // MARK: Scan bar
@@ -213,7 +218,7 @@ struct NetworkScannerView: View {
                     }
                 }
             }
-            .width(min: 140, ideal: 160)
+            .width(min: 185, ideal: 195)
 
             TableColumn("Latencia", value: \.latencySort) { host in
                 LatencyText(host: host)
@@ -283,6 +288,7 @@ struct NetworkScannerView: View {
     }
 
     private func startScan() {
+        scanner.refreshInterfaces()
         guard let target else { return }
         selection = nil
         scanner.scan(target)
