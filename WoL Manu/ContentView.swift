@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var configManager = ConfigurationManager()
+    @EnvironmentObject private var configManager: ConfigurationManager
+    @Environment(\.openWindow) private var openWindow
     @StateObject private var pingService = PingService()
     @StateObject private var wolService = WakeOnLANService()
 
@@ -79,6 +80,17 @@ struct ContentView: View {
             }
 
             Spacer()
+
+            Button {
+                openWindow(id: "scanner")
+            } label: {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.title3)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .help("Analizador de red")
 
             Button {
                 showingConfiguration = true
@@ -296,4 +308,5 @@ private struct BackgroundGradient: View {
 
 #Preview {
     ContentView()
+        .environmentObject(ConfigurationManager())
 }
