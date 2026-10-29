@@ -118,7 +118,16 @@ final class ConnectionDiagnostics: ObservableObject {
         case 401, 403:
             update(3, .failed, "El servidor rechaza la API key (HTTP \(withKey!)). Revísala en Configuración.")
         case 404:
-            update(3, .failed, "El servidor no tiene /wake (HTTP 404). Versión del servidor distinta de la esperada.")
+            // Servidor Flask antiguo (wol-server/app.py): mismo protocolo en /wol
+            let (legacy, _) = await http("POST", "\(base)/wol", apiKey: c.apiKey.isEmpty ? nil : c.apiKey, body: [:])
+            switch legacy {
+            case 400:
+                update(3, .ok, "Servidor Flask (endpoint /wol): compatible")
+            case 401, 403:
+                update(3, .failed, "El servidor (/wol) rechaza la API key. Revísala en Configuración.")
+            default:
+                update(3, .failed, "El servidor no tiene /wake ni /wol (HTTP 404). ¿Es el servidor WoL correcto?")
+            }
         case let code?:
             update(3, .warning, "Respuesta inesperada de /wake (HTTP \(code))")
         case nil:

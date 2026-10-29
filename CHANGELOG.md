@@ -5,6 +5,34 @@ All notable changes to the WoL Manu project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-29 🧰 Network Tools & VPN Fixes
+
+### 🔧 Fixed
+- **[CRITICAL]** Wake over VPN never reached the server's wake step: the relay (`wol_server.py`) answers `/health` with `"healthy"` and exposes `POST /wake`, while the app expected `"ok"` and called `/wol`. The app now accepts both and falls back to `/wol` for the legacy Flask server
+- Local fallback is only attempted when the Mac is on the target's /24 (a broadcast never crosses a VPN tunnel)
+- Processing indicator stayed off while the VPN request was still running
+- 5xx retries stopped at attempt 3 of 4
+- MAC parsing now rejects mixed separators (`00:1B-63:…`)
+
+### ✨ Added
+- **Network scanner** (⌘⇧N): local interface or arbitrary IP range (from–to); IP, MAC (ARP via `sysctl`), hostname (reverse DNS, mDNS/Bonjour, NetBIOS), latency, open services, vendor and device type; inspector with clickable services and "Use for Wake-on-LAN"
+- **MAC vendor database** (`oui.txt`, ~58k IEEE MA-L/MA-M/MA-S prefixes, offline) and `scripts/update_oui.py`
+- **New-device alerts**: known MACs persisted, NUEVO badge and macOS notification for unknown devices, optional rescan every 5 minutes
+- **Network tools** (⌘⇧T): continuous ping with chart, loss and jitter; traceroute (ICMP by default, UDP optional) with per-hop names and destination check; TCP port range scanner (batched non-blocking connects); DNS queries and server comparison with block detection
+- **Connection diagnostics**: route/VPN (WireGuard status), relay TCP, `/health`, `/wake` + API key, target ping
+- **Menu bar extra** and **Shortcuts/Siri** actions (wake device, check if on)
+- `scripts/deploy_relay_api_key.sh` to deploy the relay with an API key and optionally disable SSH password logins
+
+### 🔒 Security
+- Relay API key stored in the macOS Keychain (migrated from `config.json`, excluded from exports)
+- `wol_server.py` enforces `X-API-Key` on `/wake` (`WOL_API_KEY_FILE` / `WOL_API_KEY`, constant-time comparison)
+- `NSLocalNetworkUsageDescription` declared so macOS can ask for Local Network access
+
+### 🎨 Changed
+- Redesigned main window (large power button, Liquid Glass controls, status pill, result banner) and configuration form
+- New app icon
+- Requires macOS 26
+
 ## [1.4.0] - 2024-09-30 🚀 Major Stability & Security Update
 
 ### 🔧 Fixed

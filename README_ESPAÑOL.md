@@ -2,6 +2,17 @@
 
 Una aplicación nativa de macOS desarrollada en Swift y SwiftUI para encender remotamente dispositivos usando el protocolo Wake-on-LAN.
 
+## Novedades en la versión 1.5
+
+- **Encendido por VPN arreglado**: compatible con `wol_server.py` (`/wake`) y con el servidor Flask antiguo (`/wol`)
+- **Diagnóstico de conexión** 🩺: comprueba paso a paso ruta/VPN (estado de WireGuard), servidor, `/health`, API key y equipo destino
+- **Analizador de red** (⌘⇧N): escanea una interfaz o un rango de IPs (desde–hasta) y muestra IP, MAC, nombre, latencia, servicios, **fabricante** y **tipo de dispositivo**; un clic lo configura como equipo para Wake-on-LAN
+- **Aviso de dispositivos nuevos** con notificación de macOS y reescaneo automático opcional
+- **Herramientas de red** (⌘⇧T): ping continuo con gráfica, traceroute (ICMP como `tracert` de Windows, o UDP), escáner de puertos y consultas DNS con comparación de servidores
+- **Barra de menú** y acciones de **Atajos/Siri** («Encender equipo», «Comprobar si el equipo está encendido»)
+- **API key en el Llavero** de macOS (no en `config.json`) y validación de la key en el servidor
+- Interfaz renovada e icono nuevo. **Requiere macOS 26**
+
 ## Características
 
 - **Interfaz gráfica sencilla** desarrollada en SwiftUI
@@ -14,8 +25,8 @@ Una aplicación nativa de macOS desarrollada en Swift y SwiftUI para encender re
 ## Funcionalidades
 
 ### Ventana Principal
-- Botón **"Encender"** para enviar el paquete Wake-on-LAN
-- Botón **"Configuración"** para abrir la ventana de configuración
+- Botón de **encendido** ⏻ para enviar el paquete Wake-on-LAN
+- Botones de **diagnóstico** 🩺, **analizador de red** y **configuración** ⚙️
 - **Indicador de estado** con círculo de color y descripción
 - **Información del dispositivo** (nombre e IP)
 

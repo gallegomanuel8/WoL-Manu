@@ -2,7 +2,7 @@
 
 A native macOS application built with SwiftUI for sending Wake-on-LAN packets to remote devices, with support for both local and VPN server modes.
 
-![macOS](https://img.shields.io/badge/macOS-12.0+-blue.svg)
+![macOS](https://img.shields.io/badge/macOS-26.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-5.7+-orange.svg)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-3.0+-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
@@ -16,7 +16,11 @@ A native macOS application built with SwiftUI for sending Wake-on-LAN packets to
 - 🛡️ **Fallback Support** - Automatic fallback from VPN to local mode
 - 🔍 **Input Validation** - IP address, MAC address, and configuration validation
 - 📊 **Activity Logging** - Keep track of the last 10 Wake-on-LAN attempts
-- 🔐 **Secure API Server** - Optional Flask server with API key authentication
+- 🔐 **Secure API Server** - Relay server with API key authentication (key kept in the macOS Keychain)
+- 🔎 **Network Scanner** - IP, MAC, hostname, vendor and device type, with new-device alerts
+- 🧰 **Network Tools** - Ping chart, traceroute (ICMP/UDP), port scanner, DNS comparison
+- 🩺 **Connection Diagnostics** - Finds where a remote wake fails (VPN, server, API key, device)
+- ⚡ **Quick Access** - Menu bar extra and Shortcuts/Siri actions
 
 ## Screenshots
 
@@ -28,7 +32,7 @@ A native macOS application built with SwiftUI for sending Wake-on-LAN packets to
 - **Language**: Swift 5.7+
 - **Framework**: SwiftUI 3.0+
 - **Architecture**: MVVM with Combine for reactive programming
-- **Minimum macOS**: 12.0 (Monterey)
+- **Minimum macOS**: 26.0 (Tahoe)
 
 ### Server Component (Optional)
 - **Language**: Python 3.7+

@@ -148,8 +148,9 @@ class WakeOnLANService: ObservableObject {
         }
     }
     
-    private func sendWoLRequest(configuration: DeviceConfiguration) async throws -> Bool {
-        let url = URL(string: "http://\(configuration.serverIP):\(configuration.serverPort)/wake")!
+    /// `/wake` es el endpoint de wol_server.py; el servidor Flask antiguo (wol-server/app.py) usa `/wol`
+    private func sendWoLRequest(configuration: DeviceConfiguration, path: String = "/wake") async throws -> Bool {
+        let url = URL(string: "http://\(configuration.serverIP):\(configuration.serverPort)\(path)")!
         
         // MEJORA #5: URLSession con configuración optimizada
         let sessionConfig = URLSessionConfiguration.default
@@ -227,6 +228,10 @@ class WakeOnLANService: ObservableObject {
                         return false
                     }
                     // Continuar con retry pero con delay mayor para rate limiting
+                    
+                case 404 where path == "/wake":
+                    print("[WoLService] /wake no existe en el servidor; probando /wol (servidor Flask)")
+                    return try await sendWoLRequest(configuration: configuration, path: "/wol")
                     
                 case 400...499:
                     let message = "Error en petición: \(httpCode)"
