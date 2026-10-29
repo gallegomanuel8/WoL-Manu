@@ -155,6 +155,7 @@ private struct StatTile: View {
 private struct TracerouteToolView: View {
     let target: String
     @StateObject private var runner = TracerouteRunner()
+    @State private var proto: TraceProtocol = .icmp
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -163,13 +164,29 @@ private struct TracerouteToolView: View {
                     Button("Detener", systemImage: "stop.fill") { runner.stop() }
                     ProgressView().controlSize(.small)
                 } else {
-                    Button("Trazar ruta", systemImage: "play.fill") { runner.start(target) }
+                    Button("Trazar ruta", systemImage: "play.fill") { runner.start(target, protocol: proto) }
                         .buttonStyle(.borderedProminent)
                         .disabled(target.isEmpty)
                 }
+                Picker("Protocolo", selection: $proto) {
+                    ForEach(TraceProtocol.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+                .disabled(runner.isRunning)
+                .help("ICMP funciona como «tracert» de Windows y atraviesa cortafuegos que descartan UDP")
                 Spacer()
                 if let error = runner.error {
                     Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
+                } else if runner.hasRun && !runner.isRunning && !runner.hops.isEmpty {
+                    if runner.reachedDestination {
+                        Label("Destino alcanzado en \(runner.hops.count) saltos", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Label(proto == .udp ? "No se alcanzó el destino: prueba con ICMP" : "No se alcanzó el destino",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
 

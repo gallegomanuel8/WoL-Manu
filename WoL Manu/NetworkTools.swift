@@ -171,20 +171,39 @@ struct TraceHop: Identifiable {
     var id: Int { number }
 }
 
+enum TraceProtocol: String, CaseIterable, Identifiable {
+    /// Como `tracert` de Windows: pasa por cortafuegos que descartan UDP (p. ej. Windows)
+    case icmp = "ICMP"
+    /// Por defecto en macOS/Linux
+    case udp = "UDP"
+    var id: String { rawValue }
+}
+
 final class TracerouteRunner: ObservableObject {
     @Published private(set) var hops: [TraceHop] = []
     @Published private(set) var isRunning = false
     @Published private(set) var error: String?
+    @Published private(set) var destinationAddress: String?
+    @Published private(set) var hasRun = false
+    
+    var reachedDestination: Bool {
+        guard let destinationAddress else { return false }
+        return hops.contains { $0.address == destinationAddress }
+    }
 
     private var streamer: LineStreamer?
 
-    func start(_ host: String) {
+    func start(_ host: String, protocol proto: TraceProtocol = .icmp) {
         stop()
         hops = []
         error = nil
+        destinationAddress = nil
+        hasRun = true
 
         // -n: sin DNS (los nombres se resuelven aparte, sin frenar la traza); -q 1: una sonda por salto
-        let streamer = LineStreamer("/usr/sbin/traceroute", ["-n", "-q", "1", "-w", "2", "-m", "30", host]) { [weak self] line in
+        var args = ["-n", "-q", "1", "-w", "2", "-m", "30"]
+        if proto == .icmp { args.append("-I") }
+        let streamer = LineStreamer("/usr/sbin/traceroute", args + [host]) { [weak self] line in
             Task { @MainActor in self?.handle(line) }
         } onExit: { [weak self] _ in
             Task { @MainActor in self?.isRunning = false }
@@ -205,7 +224,9 @@ final class TracerouteRunner: ObservableObject {
     }
 
     private func handle(_ line: String) {
-        if let m = line.firstMatch(of: #/^\s*(\d+)\s+([\d.]+)\s+([\d.]+) ms/#) {
+        if let m = line.firstMatch(of: #/^traceroute to \S+ \(([\d.]+)\)/#) {
+            destinationAddress = String(m.1)
+        } else if let m = line.firstMatch(of: #/^\s*(\d+)\s+([\d.]+)\s+([\d.]+) ms/#) {
             let hop = TraceHop(number: Int(m.1) ?? 0, address: String(m.2), ms: Double(m.3))
             hops.append(hop)
             if let ip = IPv4.parse(String(m.2)) {
